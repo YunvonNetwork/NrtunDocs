@@ -40,6 +40,19 @@ const config: Config = {
     ],
   ],
 
+  plugins: [
+    [
+      "@docusaurus/plugin-content-docs",
+      {
+        id: "terms",
+        path: "terms",
+        routeBasePath: "terms",
+        sidebarPath: "./termsSidebars.ts",
+        editUrl: "https://github.com/YunvonNetwork/NrtunDocs/tree/main/",
+      },
+    ],
+  ],
+
   themeConfig: {
     image: "img/docusaurus-social-card.jpg",
     colorMode: {
@@ -53,14 +66,14 @@ const config: Config = {
       },
       items: [
         {
-          type: "docSidebar",
-          sidebarId: "docsSidebar",
+          to: "/",
+          exact: true,
           label: "文档",
           position: "left",
         },
         {
-          type: "docSidebar",
-          sidebarId: "termsSidebar",
+          to: "/terms/",
+          activeBasePath: "terms",
           label: "条款与协议",
           position: "left",
         },
