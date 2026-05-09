@@ -1,0 +1,270 @@
+# NatureTunnel Linux 命令行客户端启动文档
+
+## 介绍
+
+- 本文档将一步步向您介绍如何在Linux平台上部署NatureTunnel内网穿透服务命令行客户端并配置守护进程。
+
+## 操作步骤
+
+### 准备工作
+
+- 使用wget或其他工具 [下载](https://console.nrtun.com/release) 适合您操作系统架构的最新版本的NrtunCli命令行客户端（例如nrtun_cli_linux_amd64），并放入您的工作目录。
+
+- 下载完成后得到二进制文件，并赋予其执行权限：
+
+```bash
+chmod +x ./nrtun_cli_linux_amd64
+```
+
+- 在控制台 [隧道列表（隧道管理）](https://console.nrtun.com/tunnel/list) 页面，选择您创建的隧道，鼠标点击右侧操作下拉框，点击生成客户端配置，将配置内容复制到剪贴板，并在您的工作目录下创建config.toml，将配置写入此文件。
+
+- 您获得的客户端配置应形如下面的格式。
+
+```toml
+[client]
+server_addr =
+control_port =
+data_port =
+dial_timeout_secs = 5
+heartbeat_interval_secs = 15
+log_level = "info"
+max_reconnect_backoff_secs = 30
+reconnect_backoff_secs = 2
+udp_idle_secs = 60
+
+[nrtun_config]
+center_addr = "https://api.console.nrtun.com"
+user_id = "..."
+user_secret = "..."
+
+[[tunnels]]
+local_addr = ""
+name = "" #这里是隧道id，不是隧道名称
+remote_port = ""
+type = ""
+cert_path = /path/to/your/cert #仅当隧道类型为HTTPS时需要手动填写
+key_path = /path/to/your/key #仅当隧道类型为HTTPS时需要手动填写
+```
+
+### 启动客户端
+
+```bash
+./nrtun_cli_linux_amd64 -config ./path/to/your/config.toml
+```
+
+### 配置开机自启与后台运行
+
+#### Systemd
+
+- 复制下面的Systemd Unit 服务文件内容到你的文本编辑器。
+
+```ini
+[Unit]
+Description=Nrtun_Cli
+After=network.target
+
+[Service]
+User=root
+Restart=on-failure
+RestartSec=5s
+WorkingDirectory=/path/to/your/working/dir
+ExecStart=/path/to/your/nrtun_cli_linux_amd64 -config /path/to/your/dir/config.toml
+LimitNOFILE=1048576
+
+[Install]
+WantedBy=multi-user.target
+```
+
+- 如果需要限制日志大小，修改`/etc/systemd/journald.conf`，加入以下内容
+
+```ini
+[Journal]
+SystemMaxUse=1G
+RuntimeMaxUse=256M
+SystemMaxFileSize=128M
+MaxRetentionSec=7day
+```
+
+- 执行以下命令
+
+```bash
+systemctl daemon-reload
+systemctl enable --now nrtun
+```
+
+- 检查程序运行状态
+
+```bash
+systemctl status nrtun
+```
+
+- 查看日志
+
+```bash
+journalctl -u nrtun -f
+```
+
+#### OpenRC
+
+- 创建 OpenRC 服务文件 `/etc/init.d/nrtun`
+
+```bash
+#!/sbin/openrc-run
+
+name="nrtun"
+description="NatureTunnel Client"
+
+command="/path/to/your/dir/nrtun_cli_linux_amd64"
+command_args="-config /path/to/your/config.toml"
+command_background=true
+pidfile="/run/${RC_SVCNAME}.pid"
+
+directory="/path/to/your/working/dir"
+
+respawn_delay=5
+respawn_max=0
+
+output_log="/var/log/nrtun.log"
+error_log="/var/log/nrtun.log"
+```
+
+- 赋予执行权限
+
+```bash
+chmod +x /etc/init.d/nrtun
+```
+
+- 添加开机自启并启动服务
+
+```bash
+rc-update add nrtun default
+rc-service nrtun start
+```
+
+- 检查运行状态
+
+```bash
+rc-service nrtun status
+```
+
+- 查看日志
+
+```bash
+tail -f /var/log/nrtun.log
+```
+
+#### Supervisor
+
+- 安装 Supervisor
+
+```bash
+apt install supervisor -y
+```
+
+- 创建配置文件 `/etc/supervisor/conf.d/nrtun.conf`
+
+:::tip
+如果你不想要开机自启，可以将`autostart`的值改为`false`，然后手动启动服务。
+:::
+
+```ini
+[program:nrtun]
+command=/path/to/your/dir/nrtun_cli_linux_amd64 -config /path/to/your/config.toml
+directory=/path/to/your/working/dir
+autostart=true
+autorestart=true
+startretries=999
+startsecs=5
+user=root
+stdout_logfile=/var/log/nrtun.log
+stderr_logfile=/var/log/nrtun.log
+stdout_logfile_maxbytes=128MB
+stdout_logfile_backups=7
+```
+
+- 重新加载配置并启动
+
+```bash
+supervisorctl reread
+supervisorctl update
+supervisorctl start nrtun
+```
+
+- 检查运行状态
+
+```bash
+supervisorctl status nrtun
+```
+
+- 查看日志
+
+```bash
+tail -f /var/log/nrtun.log
+```
+
+### 管理自启动服务
+
+#### Systemd
+
+- 如需更改客户端配置文件，请先编辑工作目录下的config.toml将新的客户端配置文件写入文件，保存后执行以下命令。
+
+```bash
+systemctl restart nrtun
+```
+
+- 如需停止服务，执行以下命令。
+
+```bash
+systemctl stop nrtun
+```
+
+- 如需卸载服务，执行以下命令。
+
+```bash
+systemctl disable nrtun // 如果只是关闭自启的话只运行这个就行了
+rm /etc/systemd/system/nrtun.service
+systemctl daemon-reload
+```
+
+#### OpenRC
+
+- 如需更改客户端配置文件，请先编辑工作目录下的config.toml将新的客户端配置文件写入文件，保存后执行以下命令。
+
+```bash
+rc-service nrtun restart
+```
+
+- 如需停止服务，执行以下命令。
+
+```bash
+rc-service nrtun stop
+```
+
+- 如需卸载服务，执行以下命令。
+
+```bash
+rc-update del nrtun default // 如果只是关闭自启的话只运行这个就行了
+rm /etc/init.d/nrtun
+```
+
+#### Supervisor
+
+- 如需更改客户端配置文件，请先编辑工作目录下的config.toml将新的客户端配置文件写入文件，保存后执行以下命令。
+
+```bash
+supervisorctl restart nrtun
+```
+
+- 如需停止服务，执行以下命令。
+
+```bash
+supervisorctl stop nrtun
+```
+
+- 如需卸载服务，执行以下命令。
+
+```bash
+rm /etc/supervisor/conf.d/nrtun.conf
+supervisorctl reread
+supervisorctl update
+```

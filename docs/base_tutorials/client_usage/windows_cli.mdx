@@ -1,0 +1,210 @@
+# NatureTunnel Windows 命令行客户端启动文档
+
+## 介绍
+
+- 本文档将一步步向您介绍如何在Windows平台上部署NatureTunnel内网穿透服务命令行客户端。
+
+## 操作步骤
+
+### 准备工作
+
+- 使用浏览器或其他工具 [下载](https://console.nrtun.com/release) 适合您操作系统架构的最新版本的NrtunCli命令行客户端（例如nrtun_cli_windows_amd64），并放入您的工作目录。
+
+:::warning
+由于程序涉及流量转发，可能会被部分杀毒软件报毒，请将客户端添加至信任区防止进程被杀
+:::
+
+- 在控制台 [隧道列表（隧道管理）](https://console.nrtun.com/tunnel/list) 页面，选择您创建的隧道，鼠标点击右侧操作下拉框，点击生成客户端配置，将配置内容复制到剪贴板，并在您的工作目录下创建config.toml，将配置写入此文件。
+
+- 您获得的客户端配置应形如下面的格式。
+
+```toml
+[client]
+server_addr =
+control_port =
+data_port =
+dial_timeout_secs = 5
+heartbeat_interval_secs = 15
+log_level = "info"
+max_reconnect_backoff_secs = 30
+reconnect_backoff_secs = 2
+udp_idle_secs = 60
+
+[nrtun_config]
+center_addr = "https://api.console.nrtun.com"
+user_id = "..."
+user_secret = "..."
+
+[[tunnels]]
+local_addr = ""
+name = "" #这里是隧道id，不是隧道名称
+remote_port = ""
+type = ""
+cert_path = "/path/to/your/cert" #仅当隧道类型为HTTPS时需要手动填写
+key_path = "/path/to/your/key" #仅当隧道类型为HTTPS时需要手动填写
+```
+
+### 启动客户端
+
+```bash
+./nrtun_cli_windows_amd64.exe -config ./path/to/your/config.toml
+```
+
+### 配置开机自启与后台运行
+
+推荐使用 Windows “任务计划程序”实现开机自启与后台后台运行。
+
+#### 1. 创建启动脚本
+
+在工作目录创建 `start_nrtun.bat`：
+
+```bat
+@echo off
+cd /d %~dp0
+nrtun_cli_windows_amd64.exe -config config.toml
+```
+
+#### 2. 打开任务计划程序
+
+按下 `Win + R`，输入：
+
+```text
+taskschd.msc
+```
+
+回车打开“任务计划程序”。
+
+#### 3. 创建任务
+
+- 点击右侧“创建任务”
+- 名称填写：
+
+```text
+NatureTunnel Client
+```
+
+#### 4. 配置运行方式
+
+在“常规”标签页中勾选：
+
+- 不管用户是否登录都要运行
+- 使用最高权限运行
+
+#### 5. 配置开机启动
+
+在“触发器”标签页：
+
+- 点击“新建”
+- 开始任务选择：
+
+```text
+启动时
+```
+
+#### 6. 配置启动程序
+
+在“操作”标签页：
+
+- 点击“新建”
+- 操作选择：
+
+```text
+启动程序
+```
+
+- 程序或脚本填写：
+
+```text
+C:\path\to\your\start_nrtun.bat
+```
+
+#### 7. 保存任务
+
+点击“确定”保存任务。
+
+完成后，NatureTunnel客户端将在Windows开机后自动后台运行。
+
+### 管理自启动服务
+
+#### 修改客户端配置
+
+如需更改客户端配置文件，请先编辑工作目录下的 `config.toml`，保存后重新启动任务即可生效。
+
+可以通过以下方式重启任务：
+
+- 打开“任务计划程序”
+- 找到：
+
+```text
+NatureTunnel Client
+```
+
+- 右键任务，点击：
+
+```text
+结束
+```
+
+随后再次点击：
+
+```text
+运行
+```
+
+#### 停止后台服务
+
+如需停止客户端运行：
+
+- 打开“任务计划程序”
+- 找到：
+
+```text
+NatureTunnel Client
+```
+
+- 右键任务
+- 点击：
+
+```text
+结束
+```
+
+#### 禁用开机自启
+
+如需关闭开机自启：
+
+- 打开“任务计划程序”
+- 找到：
+
+```text
+NatureTunnel Client
+```
+
+- 右键任务
+- 点击：
+
+```text
+禁用
+```
+
+客户端将不再随Windows开机自动启动。
+
+#### 卸载自启动服务
+
+如需彻底移除自启动任务：
+
+- 打开“任务计划程序”
+- 找到：
+
+```text
+NatureTunnel Client
+```
+
+- 右键任务
+- 点击：
+
+```text
+删除
+```
+
+删除后，NatureTunnel客户端将不会再自动启动。
