@@ -53,6 +53,18 @@ const config: Config = {
       },
       items: [
         {
+          type: "docSidebar",
+          sidebarId: "docsSidebar",
+          label: "文档",
+          position: "left",
+        },
+        {
+          type: "docSidebar",
+          sidebarId: "termsSidebar",
+          label: "条款与协议",
+          position: "left",
+        },
+        {
           href: "https://console.nrtun.com",
           label: "控制台",
           position: "right",
