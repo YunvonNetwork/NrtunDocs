@@ -76,7 +76,7 @@ const config: Config = {
           ],
         },
         {
-          title: "Community",
+          title: "社区",
           items: [
             {
               label: "邮箱",
@@ -93,7 +93,7 @@ const config: Config = {
           ],
         },
         {
-          title: "More",
+          title: "更多",
           items: [
             {
               label: "控制台",
@@ -106,7 +106,7 @@ const config: Config = {
           ],
         },
       ],
-      copyright: `Copyright © ${new Date().getFullYear()} Yunvon Interconnections, Inc. All rights reserved.`,
+      copyright: `Copyright © ${new Date().getFullYear()} Yunvon Interconnections. All rights reserved.`,
     },
     prism: {
       theme: prismThemes.github,
