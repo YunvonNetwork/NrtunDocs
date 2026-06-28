@@ -1,0 +1,581 @@
+---
+sidebar_position: 1
+---
+
+# OAuth 与开放 API
+
+本文档介绍第三方应用如何通过 OAuth 获取授权，并使用 `/open` 开放 API 访问用户侧资源。
+
+:::info
+该文档部分内容使用生成式人工智能编写。
+:::
+
+## 基础信息
+
+| 项目             | 地址                                                                    |
+| ---------------- | ----------------------------------------------------------------------- |
+| API Base URL     | `https://api.console.nrtun.com`                                         |
+| OAuth 授权端点   | `https://api.console.nrtun.com/oauth2/authorize`                        |
+| OAuth Token 端点 | `https://api.console.nrtun.com/oauth2/token`                            |
+| UserInfo 端点    | `https://api.console.nrtun.com/oauth2/userinfo`                         |
+| JWKS             | `https://api.console.nrtun.com/oauth2/jwks.json`                        |
+| OIDC Discovery   | `https://api.console.nrtun.com/oauth2/.well-known/openid-configuration` |
+| 开放 API 前缀    | `https://api.console.nrtun.com/open`                                    |
+
+## 支持的授权方式
+
+当前支持以下 OAuth 授权方式：
+
+| grant_type                                     | 用途                                      | 是否推荐                                             |
+| ---------------------------------------------- | ----------------------------------------- | ---------------------------------------------------- |
+| `authorization_code`                           | Web 服务端应用、CLI、桌面应用、移动端应用 | 推荐                                                 |
+| `refresh_token`                                | 刷新用户授权 access token                 | 推荐                                                 |
+| `urn:ietf:params:oauth:grant-type:device_code` | 无浏览器或输入受限设备                    | 按需使用                                             |
+| `client_credentials`                           | 机器到机器调用                            | 仅限 client 类 scope，不可访问用户侧 `/open/tunnels` |
+
+:::warning
+`client_credentials` 不会继承 OAuth 应用所有者的用户权限，也不能用于 `tunnel:read` / `tunnel:write` 这类用户侧 scope。访问用户自己的隧道必须使用用户参与授权的流程，例如 `authorization_code` 或 device code。
+:::
+
+### 应该选择哪种授权方式
+
+| 场景 | 推荐方式 | 说明 |
+| --- | --- | --- |
+| Web 服务端应用接入 NatureTunnel 登录或开放 API | Authorization Code + `client_secret` | 服务端可以安全保存密钥，流程最标准 |
+| SPA、移动端、桌面端、CLI | Authorization Code + PKCE | 无法安全保存 `client_secret` 时使用 |
+| 路由器、电视、服务器终端等输入受限设备 | Device Code | 用户在另一台设备浏览器中确认授权 |
+| 后台服务调用应用自身资源 | Client Credentials | 只适合应用自身身份，不能访问用户隧道 |
+| access token 过期后续期 | Refresh Token | 前提是前一次授权返回了 `refresh_token` |
+
+### Token 端点认证方式
+
+`/oauth2/token` 支持两种提交客户端密钥的方式：
+
+#### client_secret_basic
+
+将 `client_id:client_secret` 做 Base64 编码后放入 `Authorization: Basic`：
+
+```bash
+curl -X POST https://api.console.nrtun.com/oauth2/token \
+  -H 'Content-Type: application/x-www-form-urlencoded' \
+  -u 'YOUR_CLIENT_ID:YOUR_CLIENT_SECRET' \
+  -d 'grant_type=refresh_token' \
+  -d 'refresh_token=nrtun_rt_xxx'
+```
+
+#### client_secret_post
+
+将 `client_id` 和 `client_secret` 放在请求体中：
+
+```bash
+curl -X POST https://api.console.nrtun.com/oauth2/token \
+  -H 'Content-Type: application/x-www-form-urlencoded' \
+  -d 'grant_type=refresh_token' \
+  -d 'client_id=YOUR_CLIENT_ID' \
+  -d 'client_secret=YOUR_CLIENT_SECRET' \
+  -d 'refresh_token=nrtun_rt_xxx'
+```
+
+:::tip
+服务端应用建议优先使用 `client_secret_basic`。public client 使用 PKCE 时不提交 `client_secret`。
+:::
+
+## Scope 列表
+
+| Scope          | 说明                    | 可访问能力                                                        |
+| -------------- | ----------------------- | ----------------------------------------------------------------- |
+| `profile`      | 读取用户基础资料        | `/oauth2/userinfo`、`GET /open/me`                                |
+| `permissions`  | 读取 token 中的权限列表 | `/oauth2/userinfo` 返回 `permissions`                             |
+| `tunnel:read`  | 读取授权用户自己的隧道  | `GET /open/tunnels`、`GET /open/tunnels/:tunnelId`                |
+| `tunnel:write` | 编辑授权用户自己的隧道  | 包含 `tunnel:read` 能力，并可调用 `PATCH /open/tunnels/:tunnelId` |
+
+:::note
+`tunnel:read` 和 `tunnel:write` 是用户侧开放 API 权限，不是后台管理权限。
+内部对应的是 `open.tunnel.read` / `open.tunnel.write`，不会授予 `admin.tunnel.listAll` 或 `admin.tunnel.edit`。
+:::
+
+## 创建 OAuth 应用
+
+登录控制台后，在 OAuth 应用管理页面创建应用。创建后会得到：
+
+- `client_id`
+- `client_secret`
+- 已配置的 `redirect_uri`
+
+请妥善保管 `client_secret`。如果你的应用是浏览器前端、移动端、CLI 等无法安全保存密钥的 public client，请使用 PKCE。
+
+## Authorization Code 流程
+
+### 1. 跳转到授权页
+
+将用户重定向到授权端点：
+
+```text
+GET https://api.console.nrtun.com/oauth2/authorize?client_id=YOUR_CLIENT_ID&redirect_uri=https%3A%2F%2Fexample.com%2Fcallback&response_type=code&scope=profile%20tunnel%3Aread&state=RANDOM_STATE&code_challenge=CODE_CHALLENGE&code_challenge_method=S256
+```
+
+参数说明：
+
+| 参数                    | 必填               | 说明                                     |
+| ----------------------- | ------------------ | ---------------------------------------- |
+| `client_id`             | 是                 | OAuth 应用 ID                            |
+| `redirect_uri`          | 是                 | 必须与应用中配置的回调地址完全一致       |
+| `response_type`         | 建议               | 固定使用 `code`                          |
+| `scope`                 | 否                 | 使用空格分隔，例如 `profile tunnel:read` |
+| `state`                 | 建议               | 用于防 CSRF，回调时原样返回              |
+| `code_challenge`        | public client 必填 | PKCE challenge                           |
+| `code_challenge_method` | public client 必填 | 当前只支持 `S256`                        |
+
+:::tip
+如果未传 `scope`，默认会包含 `profile`。
+:::
+
+### 2. 用户确认授权
+
+用户登录并同意授权后，服务端会将用户带回你的 `redirect_uri`，并附带授权码：
+
+```text
+https://example.com/callback?code=AUTH_CODE&state=RANDOM_STATE
+```
+
+如果用户拒绝授权，会返回：
+
+```text
+https://example.com/callback?error=access_denied&state=RANDOM_STATE
+```
+
+### 3. 使用授权码换取 token
+
+服务端应用可以使用 `client_secret`：
+
+```bash
+curl -X POST https://api.console.nrtun.com/oauth2/token \
+  -H 'Content-Type: application/x-www-form-urlencoded' \
+  -u 'YOUR_CLIENT_ID:YOUR_CLIENT_SECRET' \
+  -d 'grant_type=authorization_code' \
+  -d 'code=AUTH_CODE' \
+  -d 'redirect_uri=https://example.com/callback'
+```
+
+Public client 使用 PKCE，不需要提交 `client_secret`：
+
+```bash
+curl -X POST https://api.console.nrtun.com/oauth2/token \
+  -H 'Content-Type: application/x-www-form-urlencoded' \
+  -d 'grant_type=authorization_code' \
+  -d 'client_id=YOUR_CLIENT_ID' \
+  -d 'code=AUTH_CODE' \
+  -d 'redirect_uri=https://example.com/callback' \
+  -d 'code_verifier=CODE_VERIFIER'
+```
+
+成功响应示例：
+
+```json
+{
+  "access_token": "eyJ...",
+  "token_type": "Bearer",
+  "expires_in": 3600,
+  "refresh_token": "nrtun_rt_xxx",
+  "scope": "profile tunnel:read"
+}
+```
+
+### PKCE 生成方式
+
+`code_verifier` 是一个高熵随机字符串，`code_challenge` 为它的 SHA-256 Base64URL 编码。
+
+Node.js 示例：
+
+```js
+import crypto from "node:crypto";
+
+const codeVerifier = crypto.randomBytes(32).toString("base64url");
+const codeChallenge = crypto
+  .createHash("sha256")
+  .update(codeVerifier)
+  .digest("base64url");
+```
+
+## 刷新 access token
+
+当 `access_token` 过期后，可以使用 `refresh_token` 换取新 token：
+
+```bash
+curl -X POST https://api.console.nrtun.com/oauth2/token \
+  -H 'Content-Type: application/x-www-form-urlencoded' \
+  -u 'YOUR_CLIENT_ID:YOUR_CLIENT_SECRET' \
+  -d 'grant_type=refresh_token' \
+  -d 'refresh_token=nrtun_rt_xxx'
+```
+
+如果是 public client，可以不传 `client_secret`，但必须传 `client_id`：
+
+```bash
+curl -X POST https://api.console.nrtun.com/oauth2/token \
+  -H 'Content-Type: application/x-www-form-urlencoded' \
+  -d 'grant_type=refresh_token' \
+  -d 'client_id=YOUR_CLIENT_ID' \
+  -d 'refresh_token=nrtun_rt_xxx'
+```
+
+响应示例：
+
+```json
+{
+  "access_token": "eyJ...",
+  "token_type": "Bearer",
+  "expires_in": 3600,
+  "refresh_token": "nrtun_rt_new_xxx",
+  "scope": "profile tunnel:read"
+}
+```
+
+:::note
+刷新时旧的 `refresh_token` 会被吊销，客户端应保存新返回的 `refresh_token`。
+:::
+
+## Device Code 流程
+
+Device Code 适合没有浏览器或输入不方便的设备，例如路由器、电视、终端程序、服务器命令行工具。
+
+### 1. 设备申请 device code
+
+```bash
+curl -X POST https://api.console.nrtun.com/oauth2/device/code \
+  -H 'Content-Type: application/x-www-form-urlencoded' \
+  -d 'client_id=YOUR_CLIENT_ID' \
+  -d 'scope=profile tunnel:read'
+```
+
+响应示例：
+
+```json
+{
+  "device_code": "nrtun_dc_xxx",
+  "user_code": "A1B2C3D4",
+  "verification_uri": "https://api.console.nrtun.com/oauth2/device/authorize",
+  "verification_uri_complete": "https://api.console.nrtun.com/oauth2/device/authorize?user_code=A1B2C3D4",
+  "expires_in": 900,
+  "interval": 5
+}
+```
+
+字段说明：
+
+| 字段 | 说明 |
+| --- | --- |
+| `device_code` | 设备轮询 token 端点时使用，不能展示给最终用户 |
+| `user_code` | 展示给用户输入的短码 |
+| `verification_uri` | 用户打开后输入 `user_code` 完成授权 |
+| `verification_uri_complete` | 已带上 `user_code` 的授权地址，可直接展示二维码 |
+| `expires_in` | 设备码有效期，单位秒 |
+| `interval` | 轮询间隔，单位秒 |
+
+### 2. 提示用户完成授权
+
+设备应提示用户打开 `verification_uri_complete`，或打开 `verification_uri` 后输入 `user_code`。
+
+示例提示：
+
+```text
+请在浏览器打开：
+https://api.console.nrtun.com/oauth2/device/authorize?user_code=A1B2C3D4
+
+或访问 https://api.console.nrtun.com/oauth2/device/authorize 后输入验证码：A1B2C3D4
+```
+
+用户登录 NatureTunnel 控制台账号并确认授权后，设备即可换取 token。
+
+### 3. 设备轮询 token 端点
+
+设备按照响应中的 `interval` 轮询 `/oauth2/token`：
+
+```bash
+curl -X POST https://api.console.nrtun.com/oauth2/token \
+  -H 'Content-Type: application/x-www-form-urlencoded' \
+  -d 'grant_type=urn:ietf:params:oauth:grant-type:device_code' \
+  -d 'client_id=YOUR_CLIENT_ID' \
+  -d 'device_code=nrtun_dc_xxx'
+```
+
+用户尚未完成授权时，可能返回 `authorization_pending`。设备应等待 `interval` 秒后重试，不要高频轮询。
+
+授权完成后的响应示例：
+
+```json
+{
+  "access_token": "eyJ...",
+  "token_type": "Bearer",
+  "expires_in": 3600,
+  "refresh_token": "nrtun_rt_xxx",
+  "scope": "profile tunnel:read"
+}
+```
+
+:::warning
+Device Code 获取到的是用户授权 token，因此可以访问用户侧 `/open` API。设备应安全保存 `refresh_token`，不要将其打印到日志或上传到第三方服务。
+:::
+
+## Client Credentials 流程
+
+`client_credentials` 适用于应用自身身份，不适用于访问用户资源。
+
+典型用途：
+
+- 应用后台任务调用平台提供的应用级接口
+- 服务之间通信
+- 不涉及具体 NatureTunnel 用户资源的自动化任务
+
+不适合：
+
+- 读取用户资料
+- 读取或编辑用户隧道
+- 代替某个用户进行操作
+
+请求示例：
+
+```bash
+curl -X POST https://api.console.nrtun.com/oauth2/token \
+  -H 'Content-Type: application/x-www-form-urlencoded' \
+  -u 'YOUR_CLIENT_ID:YOUR_CLIENT_SECRET' \
+  -d 'grant_type=client_credentials' \
+  -d 'scope=client:example'
+```
+
+也可以使用 `client_secret_post`：
+
+```bash
+curl -X POST https://api.console.nrtun.com/oauth2/token \
+  -H 'Content-Type: application/x-www-form-urlencoded' \
+  -d 'grant_type=client_credentials' \
+  -d 'client_id=YOUR_CLIENT_ID' \
+  -d 'client_secret=YOUR_CLIENT_SECRET' \
+  -d 'scope=client:example'
+```
+
+响应示例：
+
+```json
+{
+  "access_token": "eyJ...",
+  "token_type": "Bearer",
+  "expires_in": 3600,
+  "scope": "client:example"
+}
+```
+
+:::warning
+如果请求 `profile`、`tunnel:read`、`tunnel:write` 等用户侧 scope，会被拒绝。`client_credentials` 不会继承应用所有者的用户权限。
+:::
+
+## 吊销 token
+
+如果 access token 或 refresh token 泄漏，或者用户主动解除授权，应用应调用 `/oauth2/revoke` 吊销 token。
+
+```bash
+curl -X POST https://api.console.nrtun.com/oauth2/revoke \
+  -H 'Content-Type: application/x-www-form-urlencoded' \
+  -d 'token=TOKEN_TO_REVOKE'
+```
+
+可以吊销：
+
+- OAuth access token
+- OAuth refresh token
+
+响应示例：
+
+```json
+{
+  "success": true,
+  "data": null,
+  "message": "令牌已吊销"
+}
+```
+
+:::note
+当前吊销接口不要求客户端认证。请不要把 token 暴露给不可信环境，否则任何拿到 token 的人都可能吊销它。
+:::
+
+## 获取用户信息
+
+```bash
+curl https://api.console.nrtun.com/oauth2/userinfo \
+  -H 'Authorization: Bearer YOUR_ACCESS_TOKEN'
+```
+
+响应示例：
+
+```json
+{
+  "sub": "USER_ID",
+  "username": "nrtun-user",
+  "email": "user@example.com",
+  "avatar": "avatar/file/key",
+  "avatar_url": "https://...",
+  "scope": "profile tunnel:read",
+  "permissions": ["open.tunnel.read"]
+}
+```
+
+## 开放 API 调用方式
+
+所有 `/open` 接口都使用 OAuth access token：
+
+```http
+Authorization: Bearer YOUR_ACCESS_TOKEN
+```
+
+:::warning
+不要使用控制台登录后的主站 JWT 调用 `/open`。`/open` 只接受 OAuth access token。
+:::
+
+### GET /open/me
+
+读取授权用户的基础信息。
+
+所需 scope：`profile`
+
+```bash
+curl https://api.console.nrtun.com/open/me \
+  -H 'Authorization: Bearer YOUR_ACCESS_TOKEN'
+```
+
+响应示例：
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": "USER_ID",
+    "username": "nrtun-user",
+    "email": "user@example.com",
+    "avatar": "avatar/file/key",
+    "scopes": ["profile", "tunnel:read"],
+    "permissions": ["open.tunnel.read"],
+    "isIdentityVerified": true
+  },
+  "message": "获取用户信息成功"
+}
+```
+
+### GET /open/tunnels
+
+获取授权用户自己的隧道列表。
+
+所需 scope：`tunnel:read`
+
+```bash
+curl https://api.console.nrtun.com/open/tunnels \
+  -H 'Authorization: Bearer YOUR_ACCESS_TOKEN'
+```
+
+响应中的单个隧道示例：
+
+```json
+{
+  "id": "TUNNEL_ID",
+  "status": "disconnect",
+  "tunnelName": "my-web",
+  "userId": "USER_ID",
+  "bindNodeId": "NODE_ID",
+  "nodeName": "示例节点",
+  "remotePort": 0,
+  "httpHost": "demo.example.com",
+  "protocol": "http",
+  "localHost": "127.0.0.1",
+  "localPort": 8080,
+  "options": {
+    "isAllowOpenInClient": true,
+    "isBanned": false,
+    "proxyProtocol": {
+      "enabled": false,
+      "version": "v2"
+    }
+  },
+  "createAt": 1760000000000,
+  "lastActivity": 1760000000000
+}
+```
+
+### GET /open/tunnels/:tunnelId
+
+获取指定隧道详情。
+
+所需 scope：`tunnel:read`
+
+```bash
+curl https://api.console.nrtun.com/open/tunnels/TUNNEL_ID \
+  -H 'Authorization: Bearer YOUR_ACCESS_TOKEN'
+```
+
+如果隧道不存在，或不属于当前授权用户，会返回 404。
+
+### PATCH /open/tunnels/:tunnelId
+
+编辑授权用户自己的隧道。
+
+所需 scope：`tunnel:write`
+
+额外要求：用户必须已完成实名认证。
+
+```bash
+curl -X PATCH https://api.console.nrtun.com/open/tunnels/TUNNEL_ID \
+  -H 'Authorization: Bearer YOUR_ACCESS_TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "tunnelName": "new-name",
+    "localHost": "127.0.0.1",
+    "localPort": 8080,
+    "options": {
+      "isAllowOpenInClient": true,
+      "proxyProtocol": {
+        "enabled": false,
+        "version": "v2"
+      }
+    }
+  }'
+```
+
+可编辑字段：
+
+| 字段                            | 类型        | 说明                         |
+| ------------------------------- | ----------- | ---------------------------- |
+| `tunnelName`                    | string      | 隧道名称                     |
+| `localHost`                     | string      | 本地服务地址                 |
+| `localPort`                     | number      | 本地服务端口，范围 `1-65535` |
+| `options.isAllowOpenInClient`   | boolean     | 是否允许在客户端打开         |
+| `options.proxyProtocol.enabled` | boolean     | 是否启用 Proxy Protocol      |
+| `options.proxyProtocol.version` | `v1` / `v2` | Proxy Protocol 版本          |
+
+不可通过开放 API 编辑：
+
+- 隧道所属用户
+- 绑定节点
+- 远程端口
+- HTTP 域名
+- 协议类型
+- 证书绑定
+- 封禁状态
+
+:::note
+Proxy Protocol 只适用于 `tcp` / `udp` 隧道。HTTP/HTTPS 隧道不能启用 Proxy Protocol；UDP 隧道仅支持 `v2`。
+:::
+
+## 常见错误
+
+| HTTP 状态码 | 常见原因                                            | 处理方式                   |
+| ----------- | --------------------------------------------------- | -------------------------- |
+| 401         | access token 无效、过期或未传 `Authorization`       | 重新获取或刷新 token       |
+| 403         | 缺少 scope、缺少 permission、用户被封禁、用户未实名 | 检查授权范围和用户状态     |
+| 404         | 访问不存在或不属于当前用户的隧道                    | 检查 `tunnelId` 和授权用户 |
+| 400         | 参数不合法，例如 `localPort` 超出范围               | 按接口文档修正请求体       |
+
+## 安全建议
+
+- 服务端应用应使用 `client_secret`，不要将 `client_secret` 暴露给浏览器前端。
+- 浏览器、移动端、CLI 等 public client 应使用 PKCE。
+- 每次授权请求都应带上随机 `state` 并在回调时校验。
+- 只申请必要 scope，不要让应用默认请求过大的权限范围。
+- access token 泄漏后应立即调用 `/oauth2/revoke` 吊销。

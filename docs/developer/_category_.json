@@ -1,0 +1,9 @@
+{
+  "label": "开发者文档",
+  "position": 80,
+  "link": {
+    "type": "generated-index",
+    "title": "开发者文档",
+    "description": "面向第三方应用和自动化集成的 OAuth 与开放 API 文档。"
+  }
+}
