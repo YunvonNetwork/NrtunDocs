@@ -89,11 +89,6 @@ curl -X POST https://api.console.nrtun.com/oauth2/token \
 | `tunnel:read`  | 读取授权用户自己的隧道  | `GET /open/tunnels`、`GET /open/tunnels/:tunnelId`                |
 | `tunnel:write` | 编辑授权用户自己的隧道  | 包含 `tunnel:read` 能力，并可调用 `PATCH /open/tunnels/:tunnelId` |
 
-:::note
-`tunnel:read` 和 `tunnel:write` 是用户侧开放 API 权限，不是后台管理权限。
-内部对应的是 `open.tunnel.read` / `open.tunnel.write`，不会授予 `admin.tunnel.listAll` 或 `admin.tunnel.edit`。
-:::
-
 ## 创建 OAuth 应用
 
 登录控制台后，在 OAuth 应用管理页面创建应用。创建后会得到：
