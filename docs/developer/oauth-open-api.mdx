@@ -312,6 +312,8 @@ curl -X POST https://api.console.nrtun.com/oauth2/token \
 Device Code 获取到的是用户授权 token，因此可以访问用户侧 `/open` API。设备应安全保存 `refresh_token`，不要将其打印到日志或上传到第三方服务。
 :::
 
+CLI/TUI 在完成 OAuth Device Code 登录后，可以使用 `access_token` 调用 `GET /open/tunnels` 或 `GET /open/tunnels/:tunnelId` 获取 TCP/UDP/HTTP 隧道启动配置。若接口返回 401，应使用 `refresh_token` 调用 `/oauth2/token` 刷新 `access_token`，保存响应中的新 `refresh_token`，然后重试一次原请求。
+
 ## Client Credentials 流程
 
 `client_credentials` 适用于应用自身身份，不适用于访问用户资源。
@@ -457,55 +459,304 @@ curl https://api.console.nrtun.com/open/me \
 
 ### GET /open/tunnels
 
-获取授权用户自己的隧道列表。
+获取当前授权用户自己的隧道数组，数组元素结构与 `GET /open/tunnels/:tunnelId` 返回的 tunnel 对象一致。
 
 所需 scope：`tunnel:read`
+
+所需 permission：`open.tunnel.read`
 
 ```bash
 curl https://api.console.nrtun.com/open/tunnels \
   -H 'Authorization: Bearer YOUR_ACCESS_TOKEN'
 ```
 
-响应中的单个隧道示例：
+响应示例：
 
 ```json
 {
-  "id": "TUNNEL_ID",
-  "status": "disconnect",
-  "tunnelName": "my-web",
-  "userId": "USER_ID",
-  "bindNodeId": "NODE_ID",
-  "nodeName": "示例节点",
-  "remotePort": 0,
-  "httpHost": "demo.example.com",
-  "protocol": "http",
-  "localHost": "127.0.0.1",
-  "localPort": 8080,
-  "options": {
-    "isAllowOpenInClient": true,
-    "isBanned": false,
-    "proxyProtocol": {
-      "enabled": false,
-      "version": "v2"
+  "success": true,
+  "data": [
+    {
+      "id": "TUNNEL_ID",
+      "status": "active",
+      "tunnelName": "my-tunnel",
+      "userId": "USER_ID",
+      "bindNodeId": "NODE_ID",
+      "nodeName": "Node 1",
+      "nodeIP": "203.0.113.10",
+      "nodePort": 2333,
+      "nodeDataPort": 2334,
+      "userSecret": "USER_SECRET",
+      "remotePort": 12345,
+      "httpHost": "demo.example.com",
+      "protocol": "tcp",
+      "localHost": "127.0.0.1",
+      "localPort": 8080,
+      "options": {
+        "isAllowOpenInClient": true,
+        "isBanned": false,
+        "proxyProtocol": {
+          "enabled": false,
+          "version": "v2"
+        },
+        "bindCertId": "CERT_ID"
+      },
+      "createAt": 1760000000000,
+      "lastActivity": 1760000000000
     }
-  },
-  "createAt": 1760000000000,
-  "lastActivity": 1760000000000
+  ],
+  "message": "获取隧道列表成功"
 }
 ```
 
 ### GET /open/tunnels/:tunnelId
 
-获取指定隧道详情。
+获取指定隧道详情。路径参数 `tunnelId` 为隧道 ID。
 
 所需 scope：`tunnel:read`
+
+所需 permission：`open.tunnel.read`
 
 ```bash
 curl https://api.console.nrtun.com/open/tunnels/TUNNEL_ID \
   -H 'Authorization: Bearer YOUR_ACCESS_TOKEN'
 ```
 
-如果隧道不存在，或不属于当前授权用户，会返回 404。
+响应示例：
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": "TUNNEL_ID",
+    "status": "active",
+    "tunnelName": "my-tunnel",
+    "userId": "USER_ID",
+    "bindNodeId": "NODE_ID",
+    "nodeName": "Node 1",
+    "nodeIP": "203.0.113.10",
+    "nodePort": 2333,
+    "nodeDataPort": 2334,
+    "userSecret": "USER_SECRET",
+    "remotePort": 12345,
+    "httpHost": "demo.example.com",
+    "protocol": "tcp",
+    "localHost": "127.0.0.1",
+    "localPort": 8080,
+    "options": {
+      "isAllowOpenInClient": true,
+      "isBanned": false,
+      "proxyProtocol": {
+        "enabled": false,
+        "version": "v2"
+      },
+      "bindCertId": "CERT_ID"
+    },
+    "createAt": 1760000000000,
+    "lastActivity": 1760000000000
+  },
+  "message": "获取隧道成功"
+}
+```
+
+错误响应：
+
+| HTTP 状态码 | 说明 |
+| ----------- | ---- |
+| 401 | access token 缺失、无效或过期 |
+| 403 | 缺少 `tunnel:read` scope 或 `open.tunnel.read` permission |
+| 404 | 隧道不存在或不属于当前授权用户 |
+
+#### OpenTunnel
+
+`GET /open/tunnels` 的 `data` 数组元素和 `GET /open/tunnels/:tunnelId` 的 `data` 均使用 `OpenTunnel` 结构。
+
+| 字段 | 类型 | 说明 |
+| ---- | ---- | ---- |
+| `id` | string | 隧道 ID |
+| `status` | string | 隧道状态，例如 `active` / `disconnect` |
+| `tunnelName` | string | 隧道名称 |
+| `userId` | string | 隧道所属用户 ID |
+| `bindNodeId` | string | 绑定节点 ID |
+| `nodeName` | string | 绑定节点名称 |
+| `nodeIP` | string | 客户端连接节点控制服务的地址，来源为 `node.options.ConnectIP` |
+| `nodePort` | number | 客户端连接节点控制服务的端口，来源为 `node.options.ConnectPort` |
+| `nodeDataPort` | number | 客户端连接节点数据服务的端口，来源为 `node.options.DataPort` |
+| `userSecret` | string | 当前用户 secret，当前后端仍会返回，但迁移 OAuth-only 客户端时不建议继续依赖 |
+| `remotePort` | number | TCP/UDP 隧道远程端口；HTTP/HTTPS 隧道通常为 `0` |
+| `httpHost` | string | HTTP/HTTPS 隧道域名；TCP/UDP 隧道通常为空字符串 |
+| `protocol` | `tcp` / `udp` / `http` / `https` | 隧道协议 |
+| `localHost` | string | 客户端本地目标地址 |
+| `localPort` | number | 客户端本地目标端口 |
+| `options` | object | 隧道选项 |
+| `options.isAllowOpenInClient` | boolean | 是否允许客户端打开 |
+| `options.isBanned` | boolean | 是否被封禁 |
+| `options.proxyProtocol` | object | Proxy Protocol 配置，仅 `tcp` / `udp` 使用 |
+| `options.proxyProtocol.enabled` | boolean | 是否启用 Proxy Protocol |
+| `options.proxyProtocol.version` | `v1` / `v2` | Proxy Protocol 版本 |
+| `options.bindCertId` | string | HTTPS 隧道绑定的证书 ID，如果未绑定可能不存在 |
+| `createAt` | number | 创建时间戳 |
+| `lastActivity` | number | 最近活动时间戳 |
+
+:::warning
+`userSecret` 当前由后端返回是为了兼容历史客户端字段，但 OAuth-only 客户端不应依赖该字段作为长期方案。后续如果后端移除该字段，客户端应不受影响。
+:::
+
+#### OpenAPI schema
+
+```yaml
+paths:
+  /open/tunnels:
+    get:
+      summary: 获取隧道列表
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: 获取隧道列表成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/OpenTunnel"
+                  message:
+                    type: string
+                    example: 获取隧道列表成功
+        "401":
+          description: access token 缺失、无效或过期
+        "403":
+          description: 缺少 tunnel:read scope 或 open.tunnel.read permission
+  /open/tunnels/{tunnelId}:
+    get:
+      summary: 获取隧道详情
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: tunnelId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: 获取隧道成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: "#/components/schemas/OpenTunnel"
+                  message:
+                    type: string
+                    example: 获取隧道成功
+        "401":
+          description: access token 缺失、无效或过期
+        "403":
+          description: 缺少 tunnel:read scope 或 open.tunnel.read permission
+        "404":
+          description: 隧道不存在或不属于当前授权用户
+components:
+  schemas:
+    OpenTunnel:
+      type: object
+      required:
+        - id
+        - status
+        - tunnelName
+        - userId
+        - bindNodeId
+        - nodeName
+        - nodeIP
+        - nodePort
+        - nodeDataPort
+        - userSecret
+        - remotePort
+        - httpHost
+        - protocol
+        - localHost
+        - localPort
+        - options
+        - createAt
+        - lastActivity
+      properties:
+        id:
+          type: string
+        status:
+          type: string
+        tunnelName:
+          type: string
+        userId:
+          type: string
+        bindNodeId:
+          type: string
+        nodeName:
+          type: string
+        nodeIP:
+          type: string
+        nodePort:
+          type: number
+        nodeDataPort:
+          type: number
+        userSecret:
+          type: string
+        remotePort:
+          type: number
+        httpHost:
+          type: string
+        protocol:
+          type: string
+          enum: [tcp, udp, http, https]
+        localHost:
+          type: string
+        localPort:
+          type: number
+        options:
+          type: object
+          properties:
+            isAllowOpenInClient:
+              type: boolean
+            isBanned:
+              type: boolean
+            proxyProtocol:
+              type: object
+              properties:
+                enabled:
+                  type: boolean
+                version:
+                  type: string
+                  enum: [v1, v2]
+            bindCertId:
+              type: string
+        createAt:
+          type: number
+        lastActivity:
+          type: number
+```
+
+#### 当前能力边界
+
+TCP / UDP / HTTP 隧道：`GET /open/tunnels` 和 `GET /open/tunnels/:tunnelId` 已返回客户端启动所需的主要运行配置字段，包括节点连接信息 `nodeIP` / `nodePort` / `nodeDataPort`。
+
+HTTPS 隧道：当前接口会返回 `httpHost`、`protocol`、`options.bindCertId` 等基础信息，但 OAuth Open API 尚未提供证书内容下载接口。因此，仅依赖 OAuth Open API 目前还不能完整获取 HTTPS 隧道启动所需的 cert PEM / fullchain PEM / private key PEM。
+
+当前没有以下证书内容下载接口：
+
+- `GET /open/tunnels/:tunnelId/certificate`
+- `GET /open/certificates/:certId`
+- `GET /open/tunnels/:tunnelId/runtime-certificate`
+
+runtime-config 路径：当前后端没有新增独立 runtime config 接口，客户端应使用现有隧道读取接口返回的字段。
 
 ### PATCH /open/tunnels/:tunnelId
 
