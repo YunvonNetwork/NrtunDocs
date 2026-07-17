@@ -1,5 +1,149 @@
 # Minecraft 联机
 
-:::tip
-此文档尚在编写中
-:::
+## 介绍
+
+- 本文档教你怎么用NatureTunnel内网穿透实现MC与好友联机以及在本机搭建MC内网穿透服务器来更方便地联机
+
+- ps:以下教程均用Java 26.2-Fabric演示
+
+## 操作步骤
+
+### 1.一般联机
+
+- 给你的MC装载mod-更高级联机设置(LAN World Plug-n-Play)
+
+  ![模组](https://docs-assets.bucket.uciu.cn/images/Image_467977139075278.png)
+
+- 启动你的Minecraft Java Edition
+
+- 进入世界，打开游戏菜单(Esc)，点击对局域网开放
+  
+  ![游戏菜单](https://docs-assets.bucket.uciu.cn/images/Image_467978127701111.png)
+
+- 多人游戏：局域网，正版验证：关(若都有正版账号则可忽略)，端口号：任意(1024-65536)，白名单：关
+
+  ![联机设置](https://docs-assets.bucket.uciu.cn/images/Image_467979068708559.png)
+
+- 点击应用更改
+
+- 浏览器打开https://console.nrtun.com/tunnel/create
+
+- 选择一个节点创建隧道
+  
+- 隧道名称任意，本地端口填写刚刚在游戏中输入的，本地主机不用动，远程端口随机一个，高级选项不用动
+
+  ![创建隧道](https://docs-assets.bucket.uciu.cn/images/Image_467980062836684.png)
+
+- 创建隧道
+
+- 点击隧道列表，点击隧道下齿轮图标，点击查看详情，将服务地址下一长串字符(形如xxxxxx.xxx.xxxx:*****)全部复制，发给你的好友
+  
+  ![服务地址](https://docs-assets.bucket.uciu.cn/images/Image_467981047983454.png)
+
+- 来到NrtunLauncher图形化客户端
+
+- 点击隧道管理，启动你刚刚创建的隧道
+  
+  ![启动隧道](https://docs-assets.bucket.uciu.cn/images/Image_467981994527412.png)
+
+- 回到游戏，等待好友进入，开始游玩
+
+### 2.服务器联机
+
+ - 该教程教你如何在本机开服(Fabric)，以及实现开机自启
+
+- 浏览器打开https://fabricmc.net/use/server/
+
+- 选择你的版本号下载.jar
+  
+  ![下载服务端](https://docs-assets.bucket.uciu.cn/images/Image_467983012958401.png)
+
+- 新建文件夹--将下载好的.jar拖进去--复制完整文件名(带后缀)
+
+  ![新建服务器文件夹](https://docs-assets.bucket.uciu.cn/images/Image_467984166780536.png)
+
+- 新建文件，名字xxx.bat--用记事本编辑--输入java -Xms()  -Xmx() -jar (文件名) nogui
+  
+  ![配置启动文件](https://docs-assets.bucket.uciu.cn/images/Image_467985239208765.png)
+
+- ps：实际输入不要带括号，Xms后填最小分配内存，Xmx后填最大分配内存，格式：*G
+
+- 双击启动xxx.bat
+
+- 完成后打开eula.txt--将eula=false改成eula.true
+
+  ![同意协议](https://docs-assets.bucket.uciu.cn/images/Image_467972399618301.png)
+
+- 用记事本打开server.properties--编辑(simulation-distance是视距，spawn-protection是出生点保护格数，view-distance是模拟距离，difficulty是游戏难度:easy,normol,hard，online-mode是是否开启正版验证，server-port是服务器端口)
+
+- mods文件夹中添加你的mod
+
+- 双击启动xxx.bat开服
+
+## 使服务器能让别人加入
+
+- 浏览器打开https://console.nrtun.com/tunnel/create
+
+- 选择一个节点创建隧道
+
+- 隧道名称任意，本地端口填写server.properties中server-port后面的数字，本地主机不用动，远程端口随机一个，高级选项一般不用动
+
+  ![创建隧道](https://docs-assets.bucket.uciu.cn/images/Image_467980062836684.png)
+
+- ps:若需获取玩家真实ip，则开启高级选项Proxy Protocol，具体参考Console配置
+
+- 创建隧道
+
+- 点击隧道列表，点击你创建的隧道下的齿轮图标，点击查看详情，将服务地址下一长串字符(形如xxxxxx.xxx.xxxx:*****)全部复制，发给你的好友
+
+  ![服务地址](https://docs-assets.bucket.uciu.cn/images/Image_467981047983454.png)
+
+### 1.客户端法
+
+- 来到NrtunLauncher图形化客户端
+
+- 点击隧道管理，启动你刚刚创建的隧道
+
+  ![启动隧道](https://docs-assets.bucket.uciu.cn/images/Image_467981994527412.png)
+
+- 回到游戏，等待好友进入，开始游玩
+
+### 2.命令行法
+
+- 来到官网-点击软件下载
+
+- 找到NrtunCore,选择合适的程序.exe下载
+
+  ![下载exe](https://docs-assets.bucket.uciu.cn/images/Image_467973538192051.png)
+
+- 在电脑任意位置新建一个文件夹，名字任意
+
+- 将exe拖至这个文件夹中
+
+- 在该文件夹中新建一个文件夹，名字configs
+
+  ![新建文件夹](https://docs-assets.bucket.uciu.cn/images/Image_467975263527727.png)
+
+- 回到官网--隧道列表--齿轮图标--生成客户端配置--下载.toml
+
+  ![客户端配置](https://docs-assets.bucket.uciu.cn/images/Image_467976204079862.png)
+  
+- 将下载好的xxxx.toml，重命名为client.toml
+
+- 将client.toml拖至configs文件夹中
+
+- 退回上一个文件夹，双击启动exe
+
+- 回到服务器，等待好友进入，开始游玩
+
+## 开机自启教程(基于命令行法)(Windows)
+
+- Win+R--输入taskschd.msc--确定
+
+- 创建基本任务--Name：[任意]--下一页--计算机启动时--连续两次下一页--程序或脚本--输入cmd.exe
+
+- 添加参数--输入/k cd /d "[exe所在目录(不含exe)]" && "[exe]"
+
+- ps:引号一定要有
+
+- 这样就实现了开机自启
