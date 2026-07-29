@@ -15,12 +15,14 @@ sidebar_position: 1
 | 项目             | 地址                                                                    |
 | ---------------- | ----------------------------------------------------------------------- |
 | API Base URL     | `https://api.console.nrtun.com`                                         |
-| OAuth 授权端点   | `https://api.console.nrtun.com/oauth2/authorize`                        |
+| OAuth 浏览器授权端点 | `https://console.nrtun.com/oauth/authorize`                         |
 | OAuth Token 端点 | `https://api.console.nrtun.com/oauth2/token`                            |
 | UserInfo 端点    | `https://api.console.nrtun.com/oauth2/userinfo`                         |
 | JWKS             | `https://api.console.nrtun.com/oauth2/jwks.json`                        |
 | OIDC Discovery   | `https://api.console.nrtun.com/oauth2/.well-known/openid-configuration` |
 | 开放 API 前缀    | `https://api.console.nrtun.com/open`                                    |
+
+OAuth 授权页和 Device Code 确认页是用户交互页面，使用 `console.nrtun.com` 控制台域名。Token、UserInfo、JWKS、Device Code 申请和开放 API 均为服务端接口，继续使用 `api.console.nrtun.com` API 域名。
 
 ## 支持的授权方式
 
@@ -106,7 +108,7 @@ curl -X POST https://api.console.nrtun.com/oauth2/token \
 将用户重定向到授权端点：
 
 ```text
-GET https://api.console.nrtun.com/oauth2/authorize?client_id=YOUR_CLIENT_ID&redirect_uri=https%3A%2F%2Fexample.com%2Fcallback&response_type=code&scope=profile%20tunnel%3Aread&state=RANDOM_STATE&code_challenge=CODE_CHALLENGE&code_challenge_method=S256
+GET https://console.nrtun.com/oauth/authorize?client_id=YOUR_CLIENT_ID&redirect_uri=https%3A%2F%2Fexample.com%2Fcallback&response_type=code&scope=profile%20tunnel%3Aread&state=RANDOM_STATE&code_challenge=CODE_CHALLENGE&code_challenge_method=S256
 ```
 
 参数说明：
@@ -249,8 +251,8 @@ curl -X POST https://api.console.nrtun.com/oauth2/device/code \
 {
   "device_code": "nrtun_dc_xxx",
   "user_code": "A1B2C3D4",
-  "verification_uri": "https://api.console.nrtun.com/oauth2/device/authorize",
-  "verification_uri_complete": "https://api.console.nrtun.com/oauth2/device/authorize?user_code=A1B2C3D4",
+  "verification_uri": "https://console.nrtun.com/oauth/device",
+  "verification_uri_complete": "https://console.nrtun.com/oauth/device?user_code=A1B2C3D4",
   "expires_in": 900,
   "interval": 5
 }
@@ -275,9 +277,9 @@ curl -X POST https://api.console.nrtun.com/oauth2/device/code \
 
 ```text
 请在浏览器打开：
-https://api.console.nrtun.com/oauth2/device/authorize?user_code=A1B2C3D4
+https://console.nrtun.com/oauth/device?user_code=A1B2C3D4
 
-或访问 https://api.console.nrtun.com/oauth2/device/authorize 后输入验证码：A1B2C3D4
+或访问 https://console.nrtun.com/oauth/device 后输入验证码：A1B2C3D4
 ```
 
 用户登录 NatureTunnel 控制台账号并确认授权后，设备即可换取 token。
