@@ -90,6 +90,7 @@ curl -X POST https://api.console.nrtun.com/oauth2/token \
 | `permissions`  | 读取 token 中的权限列表 | `/oauth2/userinfo` 返回 `permissions`                             |
 | `tunnel:read`  | 读取授权用户自己的隧道  | `GET /open/tunnels`、`GET /open/tunnels/:tunnelId`                |
 | `tunnel:write` | 编辑授权用户自己的隧道  | 包含 `tunnel:read` 能力，并可调用 `PATCH /open/tunnels/:tunnelId` |
+| `certificate:read` | 读取授权用户自己的证书和私钥 | `GET /open/certificates`、`GET /open/certificates/:certificateId` |
 
 ## 创建 OAuth 应用
 
@@ -668,6 +669,66 @@ paths:
           description: 缺少 tunnel:read scope 或 open.tunnel.read permission
         "404":
           description: 隧道不存在或不属于当前授权用户
+  /open/certificates:
+    get:
+      summary: 获取证书列表
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: 获取证书列表成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/OpenCertificateMetadata"
+                  message:
+                    type: string
+                    example: 获取证书列表成功
+        "401":
+          description: access token 缺失、无效或过期
+        "403":
+          description: 缺少 certificate:read scope、open.certificate.read permission 或未完成实名认证
+  /open/certificates/{certificateId}:
+    get:
+      summary: 下载证书和私钥内容
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: certificateId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: 获取证书成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: "#/components/schemas/OpenCertificateDetail"
+                  message:
+                    type: string
+                    example: 获取证书成功
+        "401":
+          description: access token 缺失、无效或过期
+        "403":
+          description: 缺少 certificate:read scope、open.certificate.read permission 或未完成实名认证
+        "404":
+          description: 证书不存在或不属于当前授权用户
 components:
   schemas:
     OpenTunnel:
@@ -744,21 +805,201 @@ components:
           type: number
         lastActivity:
           type: number
+    OpenCertificateMetadata:
+      type: object
+      required:
+        - id
+        - domain
+        - status
+        - source
+        - issuedAt
+        - expiresAt
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+        domain:
+          type: string
+        status:
+          type: string
+          enum: [pending, valid, expired, revoked]
+        source:
+          type: string
+          enum: [system, uploaded]
+        issuedAt:
+          type: [string, "null"]
+          format: date-time
+        expiresAt:
+          type: [string, "null"]
+          format: date-time
+        createdAt:
+          type: [string, "null"]
+          format: date-time
+        updatedAt:
+          type: [string, "null"]
+          format: date-time
+    OpenCertificateDetail:
+      allOf:
+        - $ref: "#/components/schemas/OpenCertificateMetadata"
+        - type: object
+          required:
+            - contentEncoding
+            - certificateBase64
+            - privateKeyBase64
+          properties:
+            contentEncoding:
+              type: string
+              const: base64
+            certificateBase64:
+              type: string
+              contentEncoding: base64
+            privateKeyBase64:
+              type: string
+              contentEncoding: base64
 ```
 
-#### 当前能力边界
+### GET /open/certificates
 
-TCP / UDP / HTTP 隧道：`GET /open/tunnels` 和 `GET /open/tunnels/:tunnelId` 已返回客户端启动所需的主要运行配置字段，包括节点连接信息 `nodeIP` / `nodePort` / `nodeDataPort`。
+获取当前授权用户自己的证书列表。列表只包含证书元数据，不返回证书或私钥内容。
 
-HTTPS 隧道：当前接口会返回 `httpHost`、`protocol`、`options.bindCertId` 等基础信息，但 OAuth Open API 尚未提供证书内容下载接口。因此，仅依赖 OAuth Open API 目前还不能完整获取 HTTPS 隧道启动所需的 cert PEM / fullchain PEM / private key PEM。
+所需 scope：`certificate:read`
 
-当前没有以下证书内容下载接口：
+所需 permission：`open.certificate.read`
 
-- `GET /open/tunnels/:tunnelId/certificate`
-- `GET /open/certificates/:certId`
-- `GET /open/tunnels/:tunnelId/runtime-certificate`
+其他要求：必须使用用户授权 token，并且授权用户已完成实名认证。
 
-runtime-config 路径：当前后端没有新增独立 runtime config 接口，客户端应使用现有隧道读取接口返回的字段。
+```bash
+curl https://api.console.nrtun.com/open/certificates \
+  -H 'Authorization: Bearer YOUR_ACCESS_TOKEN'
+```
+
+响应示例：
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "CERTIFICATE_ID",
+      "domain": "example.com",
+      "status": "valid",
+      "source": "system",
+      "issuedAt": "2026-01-01T00:00:00.000Z",
+      "expiresAt": "2027-01-01T00:00:00.000Z",
+      "createdAt": "2026-01-01T00:00:01.000Z",
+      "updatedAt": "2026-01-02T00:00:00.000Z"
+    }
+  ],
+  "message": "获取证书列表成功"
+}
+```
+
+证书元数据字段：
+
+| 字段 | 类型 | 说明 |
+| ---- | ---- | ---- |
+| `id` | string | 证书 ID，可传给 `GET /open/certificates/:certificateId` |
+| `domain` | string | 证书域名 |
+| `status` | `pending` / `valid` / `expired` / `revoked` | 证书状态 |
+| `source` | `system` / `uploaded` | 证书来源，分别表示系统申请或用户上传 |
+| `issuedAt` | string / null | 签发时间，ISO 8601 格式；尚未签发时为 `null` |
+| `expiresAt` | string / null | 过期时间，ISO 8601 格式；未知时为 `null` |
+| `createdAt` | string / null | 创建时间，ISO 8601 格式 |
+| `updatedAt` | string / null | 更新时间，ISO 8601 格式 |
+
+### GET /open/certificates/:certificateId
+
+下载当前授权用户自己的证书及私钥内容。路径参数 `certificateId` 为证书 ID，可以来自 `GET /open/certificates`，也可以使用 HTTPS 隧道详情中的 `options.bindCertId`。
+
+所需 scope：`certificate:read`
+
+所需 permission：`open.certificate.read`
+
+其他要求：必须使用用户授权 token，并且授权用户已完成实名认证。
+
+```bash
+curl https://api.console.nrtun.com/open/certificates/CERTIFICATE_ID \
+  -H 'Authorization: Bearer YOUR_ACCESS_TOKEN'
+```
+
+响应示例：
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": "CERTIFICATE_ID",
+    "domain": "example.com",
+    "status": "valid",
+    "source": "system",
+    "issuedAt": "2026-01-01T00:00:00.000Z",
+    "expiresAt": "2027-01-01T00:00:00.000Z",
+    "createdAt": "2026-01-01T00:00:01.000Z",
+    "updatedAt": "2026-01-02T00:00:00.000Z",
+    "contentEncoding": "base64",
+    "certificateBase64": "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tLi4u",
+    "privateKeyBase64": "LS0tLS1CRUdJTiBQUklWQVRFIEtFWS0tLS0tLi4u"
+  },
+  "message": "获取证书成功"
+}
+```
+
+内容字段：
+
+| 字段 | 类型 | 说明 |
+| ---- | ---- | ---- |
+| `contentEncoding` | `base64` | `certificateBase64` 和 `privateKeyBase64` 的编码方式，当前固定为 Base64 |
+| `certificateBase64` | string | 证书 PEM 内容经过 UTF-8 Base64 编码后的字符串 |
+| `privateKeyBase64` | string | 私钥 PEM 内容经过 UTF-8 Base64 编码后的字符串 |
+
+接口返回 JSON，不会直接返回文件流。Node.js 解码并保存为 PEM 文件的示例：
+
+```js
+import { writeFile } from "node:fs/promises";
+
+const response = await fetch(
+  "https://api.console.nrtun.com/open/certificates/CERTIFICATE_ID",
+  {
+    headers: {
+      Authorization: "Bearer YOUR_ACCESS_TOKEN",
+    },
+  },
+);
+
+if (!response.ok) {
+  throw new Error(`下载证书失败: HTTP ${response.status}`);
+}
+
+const result = await response.json();
+const certificate = result.data;
+
+await writeFile(
+  "certificate.pem",
+  Buffer.from(certificate.certificateBase64, "base64"),
+  { mode: 0o600 },
+);
+await writeFile(
+  "private-key.pem",
+  Buffer.from(certificate.privateKeyBase64, "base64"),
+  { mode: 0o600 },
+);
+```
+
+:::warning
+该接口会返回未加密的私钥内容。不要记录完整响应、Base64 字段或解码后的私钥，不要将其暴露给浏览器页面、日志、错误上报或不可信的第三方服务。服务端会为详情响应设置 `Cache-Control: no-store` 和 `Pragma: no-cache`。
+:::
+
+如果证书不存在或不属于当前授权用户，接口统一返回 404。尚未签发完成的证书可能返回空的 `certificateBase64` 和 `privateKeyBase64`，调用方应先检查 `status` 和内容字段。
+
+#### HTTPS 隧道证书获取流程
+
+1. 调用 `GET /open/tunnels/:tunnelId` 获取 HTTPS 隧道详情。
+2. 读取 `options.bindCertId`；未返回该字段表示隧道未绑定证书。
+3. 使用包含 `certificate:read` scope 的用户授权 token 调用 `GET /open/certificates/:certificateId`。
+4. 按 `contentEncoding` 解码并安全保存证书和私钥，然后启动 HTTPS 隧道客户端。
+
+TCP / UDP / HTTP 隧道可以直接使用现有隧道读取接口返回的主要运行配置。当前后端没有独立的 runtime config 接口，客户端应使用 `GET /open/tunnels` 或 `GET /open/tunnels/:tunnelId` 返回的字段。
 
 ### PATCH /open/tunnels/:tunnelId
 
@@ -814,8 +1055,8 @@ Proxy Protocol 只适用于 `tcp` / `udp` 隧道。HTTP/HTTPS 隧道不能启用
 | HTTP 状态码 | 常见原因                                            | 处理方式                   |
 | ----------- | --------------------------------------------------- | -------------------------- |
 | 401         | access token 无效、过期或未传 `Authorization`       | 重新获取或刷新 token       |
-| 403         | 缺少 scope、缺少 permission、用户被封禁             | 检查授权范围和用户状态     |
-| 404         | 访问不存在或不属于当前用户的隧道                    | 检查 `tunnelId` 和授权用户 |
+| 403         | 缺少 scope、缺少 permission、用户被封禁或未完成实名认证 | 检查授权范围和用户状态     |
+| 404         | 隧道或证书不存在，或者不属于当前授权用户            | 检查资源 ID 和授权用户     |
 | 400         | 参数不合法，例如 `localPort` 超出范围               | 按接口文档修正请求体       |
 
 ## 安全建议
@@ -825,3 +1066,4 @@ Proxy Protocol 只适用于 `tcp` / `udp` 隧道。HTTP/HTTPS 隧道不能启用
 - 每次授权请求都应带上随机 `state` 并在回调时校验。
 - 只申请必要 scope，不要让应用默认请求过大的权限范围。
 - access token 泄漏后应立即调用 `/oauth2/revoke` 吊销。
+- 通过 `certificate:read` 获取的私钥必须加密存储或限制为仅当前服务账号可读，并避免写入日志和错误上报。
