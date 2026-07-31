@@ -2,70 +2,88 @@
 title: "Web服务穿透"
 ---
 
-# NatureTunnel Web服务穿透实践文档
+# NatureTunnel Web 服务穿透实践文档
 
-出于合规性要求，我们已不允许TCP协议的隧道穿透HTTP/HTTPS协议的服务，因此请使用HTTP/HTTPS协议的隧道来穿透HTTP/HTTPS服务。
+:::warning
+出于合规性要求，TCP 协议隧道不允许用于穿透 HTTP/HTTPS 协议的服务。如需穿透 HTTP/HTTPS 服务，请使用 HTTP 或 HTTPS 协议隧道。
+:::
 
-# 介绍
+## 介绍
 
-- 本文档将一步步向您介绍如何使用NatureTunnel穿透常见Web服务。
-
-- 本教程适用于用户将本地的 HTTP/HTTPS 服务穿透到公网的场景，如 博客、NAS、服务器面板等。
-
-- 对于暴露到公网的敏感服务，请自行做好安全防护措施，我们不对穿透服务的安全性负责。
-
-# 操作步骤
+- 本文档将逐步介绍如何使用 NatureTunnel 将本地 HTTP/HTTPS 服务穿透至公网。
+- 本教程适用于将本地 HTTP/HTTPS 服务暴露到公网的场景，如博客、NAS、服务器面板等。
+- 暴露到公网的敏感服务存在安全风险，请自行做好安全防护措施，NatureTunnel 不对穿透服务的安全性负责。
 
 ## 准备工作
 
-1. 已经部署在本地的任意Web服务（本教程以飞牛fnOS桌面为例）。
+1. 已在本地部署的 Web 服务（本教程以飞牛 fnOS 桌面为例）。
 
-2. 在本地安装任意形式的NatureTunnel官方启动器（本教程以fnOS图形化客户端为例）。
+2. 已安装任意形式的 NatureTunnel 官方启动器（本教程以 fnOS 图形化客户端为例）。
+
+3. 一个可用的域名。您需要拥有该域名的完全解析权限，以便将其加入域名白名单并完成所有权验证。
 
 ## 创建隧道
 
-1. 在浏览器中打开 [NatureTunnel控制台](https://console.nrtun.com/)，登录后进入 [工作台-创建隧道](https://console.nrtun.com/tunnel/create) 页面。
+1. 在浏览器中打开 [NatureTunnel 控制台](https://console.nrtun.com/)，登录后进入 [工作台-创建隧道](https://console.nrtun.com/tunnel/create) 页面。
 
-![f8859fad-76fb-498f-a795-ee82b10d5ca7.png](https://docs-assets.bucket.uciu.cn/images/Web-prac/f8859fad-76fb-498f-a795-ee82b10d5ca7.png)
+![创建隧道页面](https://docs-assets.bucket.uciu.cn/images/Web-prac/f8859fad-76fb-498f-a795-ee82b10d5ca7.png)
 
-2. 进入 [工作台-域名白名单](https://console.nrtun.com/domain/whitelist) 页面，添加您预期作为隧道访问域名的顶级域名（非子域名，例如iusi.cn而非www.iusi.cn），并完成域名所有权验证。
+2. 进入 [工作台-域名白名单](https://console.nrtun.com/domain/whitelist) 页面，将计划作为隧道访问域名的顶级域名加入白名单，并完成域名所有权验证。
 
-根据《非经营性互联网信息服务备案管理办法》第五条规定："在中华人民共和国境内提供非经营性互联网信息服务，应当依法履行备案手续。未经备案，不得在中华人民共和国境内从事非经营性互联网信息服务。"故使用中国大陆节点提供HTTP(s)服务时，需要使用已经取得ICP备案的域名。
+需要注意：应添加顶级域名本身，而非子域名。例如，计划使用 `www.iusi.cn` 作为访问域名，则白名单中应添加 `iusi.cn`。
 
-![f26ad224-53d1-447a-bb52-0064e3850e65.png](https://docs-assets.bucket.uciu.cn/images/Web-prac/f26ad224-53d1-447a-bb52-0064e3850e65.png)
+:::warning
+根据《非经营性互联网信息服务备案管理办法》第五条规定：“在中华人民共和国境内提供非经营性互联网信息服务，应当依法履行备案手续。未经备案，不得在中华人民共和国境内从事非经营性互联网信息服务。”因此，使用中国大陆节点提供 HTTP/HTTPS 服务时，需要使用已取得 ICP 备案的域名。
+:::
 
-3. 选择支持HTTP/HTTPS的适当节点（优先选择距离自己较近的中国大陆的多线或同运营商节点），填写一个适当的`隧道名称`，将`协议类型`选为HTTP/HTTPS（出于安全性考虑建议选择HTTPS，创建隧道前需先在证书管理页面申请证书），`本地端口`按实际情况填写（飞牛fnOS默认端口为5666），`远程端口`随机即可。
+![域名白名单页面](https://docs-assets.bucket.uciu.cn/images/Web-prac/f26ad224-53d1-447a-bb52-0064e3850e65.png)
 
-![3a5cd354-16e0-4553-bf62-e8752ded4863.png](https://docs-assets.bucket.uciu.cn/images/Web-prac/3a5cd354-16e0-4553-bf62-e8752ded4863.png)
+3. 选择支持 HTTP/HTTPS 的节点（优先选择距离较近的中国大陆多线或同运营商节点），并按照以下说明填写创建表单：
 
-![QQ_1785215197962.png](https://docs-assets.bucket.uciu.cn/images/Web-prac/QQ_1785215197962.png)
+    - 隧道名称：填写便于识别的名称。
+    - 协议类型：选择 HTTP 或 HTTPS。出于安全考虑，建议选择 HTTPS；创建 HTTPS 隧道前，需先在证书管理页面申请证书。
+    - 本地端口：填写本地服务的实际监听端口（飞牛 fnOS 默认端口为 5666）。
+    - 远程端口：随机填写即可。
+    - 域名：填写已通过白名单验证的域名，可以为顶级域名或其子域名。
 
-4. 在您的域名解析服务商处，添加对应子域名CNAME记录到节点访问地址（例如访问域名为www.iusi.cn，则必须严格按照子域名www添加，不可添加为顶级域解析或其他子域名）
+![创建隧道表单](https://docs-assets.bucket.uciu.cn/images/Web-prac/3a5cd354-16e0-4553-bf62-e8752ded4863.png)
 
-![bfe9ba4f-01b0-4f9d-8938-b0533e55a750.png](https://docs-assets.bucket.uciu.cn/images/Web-prac/bfe9ba4f-01b0-4f9d-8938-b0533e55a750.png)
+![创建隧道表单（续）](https://docs-assets.bucket.uciu.cn/images/Web-prac/QQ_1785215197962.png)
 
-![QQ_1785418695064.png](https://docs-assets.bucket.uciu.cn/images/Web-prac/QQ_1785418695064.png)
+4. 在域名解析服务商处，为访问域名添加 CNAME 记录，将其解析到节点访问地址。
 
-![84efb927-7801-4392-b1c2-3cc2e85f00a7.png](https://docs-assets.bucket.uciu.cn/images/Web-prac/84efb927-7801-4392-b1c2-3cc2e85f00a7.png)
+例如，访问域名为 `www.iusi.cn` 时，应严格按照子域名 `www` 添加记录，不能解析为顶级域名或其他子域名。
 
-（解析生效至全球需要5分钟-24小时，请耐心等待）
+![域名解析设置](https://docs-assets.bucket.uciu.cn/images/Web-prac/bfe9ba4f-01b0-4f9d-8938-b0533e55a750.png)
+
+![添加解析记录](https://docs-assets.bucket.uciu.cn/images/Web-prac/QQ_1785418695064.png)
+
+![解析记录添加完成](https://docs-assets.bucket.uciu.cn/images/Web-prac/84efb927-7801-4392-b1c2-3cc2e85f00a7.png)
+
+:::note
+DNS 解析在全球范围内生效通常需要 5 分钟至 24 小时，请耐心等待。
+:::
 
 ## 启动隧道
 
-1. 安装并打开任意版本的NatureTunnel启动器（此处以fnOS为例）。
+1. 安装并打开任意版本的 NatureTunnel 启动器（此处以 fnOS 图形化客户端为例）。
 
-![79aa07c0-73dd-4f58-bce4-9a2fe26dea05.png](https://docs-assets.bucket.uciu.cn/images/Web-prac/79aa07c0-73dd-4f58-bce4-9a2fe26dea05.png)
+![启动器界面](https://docs-assets.bucket.uciu.cn/images/Web-prac/79aa07c0-73dd-4f58-bce4-9a2fe26dea05.png)
 
 2. 启动刚刚创建的隧道。
 
-![QQ_1785418238674.png](https://docs-assets.bucket.uciu.cn/images/Web-prac/QQ_1785418238674.png)
+![启动隧道](https://docs-assets.bucket.uciu.cn/images/Web-prac/QQ_1785418238674.png)
 
-3. 访问您的服务域名，不出意外的话现在已经可以正常访问了。
+3. 在浏览器中访问您的服务域名，此时应能正常访问服务。
 
-![QQ_1785418950126.png](https://docs-assets.bucket.uciu.cn/images/Web-prac/QQ_1785418950126.png)
+![通过域名访问服务](https://docs-assets.bucket.uciu.cn/images/Web-prac/QQ_1785418950126.png)
 
-可以看到，已经可以正常访问，SSL证书已生效。
+可以看到，服务访问正常，HTTPS 证书已生效。
 
-![QQ_1785418963634.png](https://docs-assets.bucket.uciu.cn/images/Web-prac/QQ_1785418963634.png)
+![HTTPS 证书生效](https://docs-assets.bucket.uciu.cn/images/Web-prac/QQ_1785418963634.png)
 
-4. 如果遇到问题，请添加 [控制台-帮助中心](https://console.nrtun.com/help) 内的用户交流群发送隧道的脱敏日志友善寻求帮助，请注意群内成员没有为您解决问题的义务，所以您需要注意您提问的方式。但在大部分情况下，群友都是很乐于助人的。
+## 故障排查
+
+如果访问仍然失败，请加入 [控制台-帮助中心](https://console.nrtun.com/help) 中的用户交流群，发送隧道的脱敏日志并友善地寻求帮助。
+
+请注意：群内成员没有义务为您解决问题，提问时请保持友善的方式与态度。
