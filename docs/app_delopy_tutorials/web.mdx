@@ -1,10 +1,12 @@
----
-title: "Web服务穿透"
----
 
-# NatureTunnel Web服务穿透实践文档
+# Web 服务穿透
 
-出于合规性要求，我们已不允许TCP协议的隧道穿透HTTP/HTTPS协议的服务，因此请使用HTTP/HTTPS协议的隧道来穿透HTTP/HTTPS服务。
+>[!warning]
+>出于合规性要求，我们已不允许TCP协议的穿透进行HTTP/HTTPS协议的服务，因此请使用HTTP/HTTPS协议的穿透来暴露HTTP/HTTPS服务。
+
+>[!tip]
+>1、本文使用 docker 环境，实际上使用方法和二进制环境是一样的，仅仅一些无关紧要的细节不同
+>2、实际上的情况可能会有所出入，请读者仔细处理。如果任未能解决，请联系管理员
 
 # 介绍
 
@@ -68,4 +70,89 @@ title: "Web服务穿透"
 
 ![QQ_1785418963634.png](https://docs-assets.bucket.uciu.cn/images/Web-prac/QQ_1785418963634.png)
 
-4. 如果遇到问题，请添加 [控制台-帮助中心](https://console.nrtun.com/help) 内的用户交流群发送隧道的脱敏日志友善寻求帮助，请注意群内成员没有为您解决问题的义务，所以您需要注意您提问的方式。但在大部分情况下，群友都是很乐于助人的。
+![创建隧道页面导航](https://docs-assets.bucket.uciu.cn/console-navbar-tunnel-create.png)
+
+- 选择合适节点（国外服务第推荐选择国外，国内服务器推荐选择国内，穿透 web 服务需要选择带有 `http` 和 `https` 标签的节点），演示选择 `中国香港-2`  。
+
+![select_node.png](https://driver.azerl7.dpdns.org/f/zrESn/select_node.png)
+
+- 往下滑动，填写隧道信息：
+
+![fill_node_information.png](https://driver.azerl7.dpdns.org/f/69bhZ/fill_node_information.png)
+
+>[!tip] 
+>1、**隧道名称**：用于区分该隧道用来做什么的，比如 mc服务器 就可以写 mc服务器_01
+>2、**协议类型**：想要穿透什么类型的服务，这里以 https 服务演示
+>3、**本地主机**：填写要穿透的服务的地址，如果是本地就写 127.0.0.1 即可，如果使用了容器服务，比如 docker ，请填写容器地址
+>4、**本地端口**：填写服务端口，本地就填写本地暴露出去的端口，如果的容器，就填写容器的端口
+>5、**域名**：该服务将会使用哪一个域名访问，需要在 [域名白名单](https://console.nrtun.com/domain/whitelist) 添加域名白名单
+>6、**证书**：因为 https 访问需要使用证书，所以需要添加证书，需要在 [证书管理](https://console.nrtun.com/cert) 申请证书
+
+- 然后点击创建隧道创建隧道，并进入 [隧道列表](https://console.nrtun.com/tunnel/list) 生成客户端配置，复制粘贴到服务器上的配置文件地址：
+
+![get_config.png](https://driver.azerl7.dpdns.org/f/w9mIN/get_config.png)
+
+并且修改配置文件路径，记得添加上引号：
+
+```toml
+cert_file = "/app/cert/cert.crt"
+key_file = "/app/key/key.key"
+```
+
+### 2.上传证书
+
+- 随后在 [证书管理](https://console.nrtun.com/cert) 下载对应证书，上传到服务器
+![download_cert.png](https://driver.azerl7.dpdns.org/f/aQ4Tg/download_cert.png)
+
+==普通环境下直接上传，然后在配置文件中指定路径即可，容器环境下，需要传递到容器内部==
+
+### 3.创建容器
+推荐使用如下创建容器命令：
+
+```shell
+docker run -d \
+  --name nrtun \
+  --restart=always \
+  -v /root/nrtun/config/config.toml:/config/client.toml \
+  -v /root/nrtun/cert/cert.crt:/app/cert/cert.crt \
+  -v /root/nrtun/key/key.key:/app/key/key.key \
+  unifyz/nrtun-client
+```
+
+出现以下页面就创建成功
+
+![start_success.png](https://driver.azerl7.dpdns.org/f/OdgFK/start_success.png)
+
+然后通过在隧道创建的时候填写的域名访问即可
+
+![access_success.png](https://driver.azerl7.dpdns.org/f/Kxkc9/access_success.png)
+
+
+## 常见问题
+
+### 1.出现各种报错如何解决？
+
+ 可以按照下面的报错一一匹配：
+
+| 报错 内容                                                                                                                                | 解决办法                                         |
+| :----------------------------------------------------------------------------------------------------------------------------------- | :------------------------------------------- |
+| WARN session ended err=dial tcp 154.37.219.151:10001: i/o timeout                                                                    | 通常是节点不稳定，换一个稳定的节点                            |
+| (Client.Timeout exceeded while awaiting headers)                                                                                     | 这个报错是一连串的，如果出现了也是主控不稳定，可以稍作等待                |
+| domina not fond                                                                                                                      | 说明你通过控制台给的访问的，请通过你填写的域名访问                    |
+| WARN failed to connect local tunnel=6a68ba20297a4ac35bd00615 addr=127.0.0.1:80 err=dial tcp 127.0.0.1:80: connect: connection refuse | 隧道连接不上目标主机（需要穿透的主机），多半是因为容器原因，请填写容器ip，保持网络通畅 |
+| config error: toml decode: toml: incomplete number                                                                                   | 配置文件出现问题，大多时候是因为没有遵循 toml 语法规范，请仔细检查格式，引号等   |
+| config error: tunnels[0].cert_file is required for https                                                                             | 也是配置文件的问题，和后端接收数据不一致，根据提示在配置文件找对应字段修改字段名即可   |
+
+如果不在其中的报错，并且无法解决可以找找管理员（不着急的话），如果着急，还请找有经验的佬解决
+
+### 2.有时候什么也没做，突然访问不了了怎么回事？
+
+- 可能是有的时候服务器更新，等待服务器更新即可
+- 可能是节点失效了，更换节点即可
+- 可能是服务端更新了，但是客户端（安装在你的电脑、服务器上的）没有进行更新，版本落后了，更新版本，重新配置即可
+
+### 3.感觉啥都配置对了，但是就是访问不了
+
+- 可能是你自己的服务配置就有问题，比如 nginx 的配置，服务的配置，具体展开来说太广了，还请读者自行查找解决办法
+- 防火墙是否有特别的设置
+
