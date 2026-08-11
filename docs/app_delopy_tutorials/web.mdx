@@ -4,9 +4,9 @@ title: "Web服务穿透"
 
 # NatureTunnel Web 服务穿透实践文档
 
-:::warning
+::::warning
 出于合规性要求，TCP 协议隧道不允许用于穿透 HTTP/HTTPS 协议的服务。如需穿透 HTTP/HTTPS 服务，请使用 HTTP 或 HTTPS 协议隧道。
-:::
+::::
 
 ## 介绍
 
@@ -32,9 +32,9 @@ title: "Web服务穿透"
 
 需要注意：应添加顶级域名本身，而非子域名。例如，计划使用 `www.iusi.cn` 作为访问域名，则白名单中应添加 `iusi.cn`。
 
-:::warning
+::::warning
 根据《非经营性互联网信息服务备案管理办法》第五条规定：“在中华人民共和国境内提供非经营性互联网信息服务，应当依法履行备案手续。未经备案，不得在中华人民共和国境内从事非经营性互联网信息服务。”因此，使用中国大陆节点提供 HTTP/HTTPS 服务时，需要使用已取得 ICP 备案的域名。
-:::
+::::
 
 ![域名白名单页面](https://docs-assets.bucket.uciu.cn/images/Web-prac/f26ad224-53d1-447a-bb52-0064e3850e65.png)
 
@@ -60,9 +60,9 @@ title: "Web服务穿透"
 
 ![解析记录添加完成](https://docs-assets.bucket.uciu.cn/images/Web-prac/84efb927-7801-4392-b1c2-3cc2e85f00a7.png)
 
-:::note
+::::note
 DNS 解析在全球范围内生效通常需要 5 分钟至 24 小时，请耐心等待。
-:::
+::::
 
 ## 启动隧道
 
@@ -82,8 +82,6 @@ DNS 解析在全球范围内生效通常需要 5 分钟至 24 小时，请耐心
 
 ![HTTPS 证书生效](https://docs-assets.bucket.uciu.cn/images/Web-prac/QQ_1785418963634.png)
 
-## 故障排查
+## 遇到问题如何求助
 
-如果访问仍然失败，请加入 [控制台-帮助中心](https://console.nrtun.com/help) 中的用户交流群，发送隧道的脱敏日志并友善地寻求帮助。
-
-请注意：群内成员没有义务为您解决问题，提问时请保持友善的方式与态度。
+如果遇到问题，请添加 [控制台-帮助中心](https://console.nrtun.com/help) 内的用户交流群，发送隧道的脱敏日志友善寻求帮助。请注意，群内成员没有为您解决问题的义务，所以您需要注意您提问的方式。但在大部分情况下，群友都是很乐于助人的。

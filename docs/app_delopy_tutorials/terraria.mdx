@@ -1,0 +1,222 @@
+---
+title: "Terraria 联机教程"
+---
+
+# Terraria 联机教程
+
+## 介绍
+
+- 本文档将逐步介绍如何使用 NatureTunnel 内网穿透实现 Terraria 与好友联机，以及如何在本地搭建 Terraria 服务器以获得更稳定的联机体验。
+- 本教程涵盖五个部分：**一般联机（服主）**、**内网穿透配置**、**电脑端好友加入**、**手机端好友加入**、**服务器联机**，请按需查看对应章节。
+- 演示环境：Windows 10（amd64 架构）Steam 版 Terraria、Android 版 Terraria，游戏版本为 1.4.5.6。
+
+## 一般联机（服主部分）
+
+::::note
+您可以先完成 [内网穿透配置](#内网穿透配置)，再来进行本部分操作。
+::::
+
+1. 在 Steam 中打开 Terraria，点击 **多人模式**。
+
+![打开多人模式](https://docs-assets.bucket.uciu.cn/images/terraria-images/23.png)
+
+2. 点击 **开服并开始游戏**。
+
+![开服并开始游戏](https://docs-assets.bucket.uciu.cn/images/terraria-images/24.png)
+
+3. 选择您要使用的人物。
+
+![选择人物](https://docs-assets.bucket.uciu.cn/images/terraria-images/1.png)
+
+4. 选择您要联机的世界。
+
+![选择世界](https://docs-assets.bucket.uciu.cn/images/terraria-images/2.png)
+
+5. 点击 **开始**。
+
+::::note
+通过 Steam 联机不会提升内网穿透速度，是否开启请按需选择，本教程默认开启。
+::::
+
+![点击开始](https://docs-assets.bucket.uciu.cn/images/terraria-images/3.png)
+
+6. 点击 **接受**（此处默认没有密码）。
+
+![点击接受](https://docs-assets.bucket.uciu.cn/images/terraria-images/4.png)
+
+7. 进入世界后，若左下角出现 **欢迎来到** 黄色字样，说明世界已成功创建，可以被内网穿透监听。
+
+![进入世界](https://docs-assets.bucket.uciu.cn/images/terraria-images/5.png)
+
+## 内网穿透配置
+
+1. 在浏览器中打开 [NatureTunnel 控制台](https://console.nrtun.com/tunnel/create)。
+
+2. 选择一个节点创建隧道（示例中选择"广东联通"节点，您可以根据需求选择其他节点）。
+
+![选择节点创建隧道](https://docs-assets.bucket.uciu.cn/images/terraria-images/6.png)
+
+3. 按照以下说明填写创建表单：
+
+    - 隧道名称：任意填写，便于识别即可。
+    - 本地端口：填写 `7777`。
+    - 协议类型：选择 `TCP`。
+    - 本地主机：保持默认，无需修改。
+    - 远程端口：随机填写即可。
+    - 高级选项：无需修改。
+
+![创建隧道表单](https://docs-assets.bucket.uciu.cn/images/terraria-images/8.png)
+
+4. 点击 **立即创建隧道**。
+
+![立即创建隧道](https://docs-assets.bucket.uciu.cn/images/terraria-images/9.png)
+
+5. 创建完成后刷新浏览器，点击 **隧道列表**。
+
+![隧道列表](https://docs-assets.bucket.uciu.cn/images/terraria-images/10.png)
+
+6. 点击隧道右侧的 **齿轮** 图标。
+
+![点击齿轮图标](https://docs-assets.bucket.uciu.cn/images/terraria-images/11.png)
+
+7. 点击 **查看详情**。
+
+![查看详情](https://docs-assets.bucket.uciu.cn/images/terraria-images/12.png)
+
+8. 将 **服务地址** 下一长串字符（形如 `xxxxxx.xxx.xxxx:*****`）全部复制，并发送给好友。
+
+![复制服务地址](https://docs-assets.bucket.uciu.cn/images/terraria-images/13.png)
+
+9. 进入 [NatureTunnel 软件下载](https://console.nrtun.com/release) 页面，下载并安装 NrtunLauncher 图形化客户端。
+
+![下载客户端](https://docs-assets.bucket.uciu.cn/images/terraria-images/14.png)
+
+![客户端下载页面](https://docs-assets.bucket.uciu.cn/images/terraria-images/15.png)
+
+10. 双击打开安装程序（默认安装路径为 `C:\Program Files\NatureTunnel.Launcher`，您可以根据需求修改）。
+
+11. 双击桌面上的 **NatureTunnel.Launcher** 快捷方式，打开客户端并登录您的账号。
+
+12. 点击 **隧道管理**。
+
+![隧道管理](https://docs-assets.bucket.uciu.cn/images/terraria-images/16.png)
+
+13. 点击 **启动** 您刚刚创建的隧道。
+
+![启动隧道](https://docs-assets.bucket.uciu.cn/images/terraria-images/17.png)
+
+14. 隧道启动成功。好友在后续操作中将使用隧道详情中的服务地址连接，请将地址告知好友。
+
+## 电脑端好友加入
+
+1. 在 Steam 中打开 Terraria，点击 **多人模式**。
+
+![打开多人模式](https://docs-assets.bucket.uciu.cn/images/terraria-images/23.png)
+
+2. 点击 **通过 IP 加入**。
+
+![通过IP加入](https://docs-assets.bucket.uciu.cn/images/terraria-images/18.png)
+
+3. 选择您要使用的人物。
+
+![选择人物](https://docs-assets.bucket.uciu.cn/images/terraria-images/1.png)
+
+4. 填写 IP 地址：输入服务地址中**冒号前面的部分**（即服务地址 `xxxxxx.xxx.xxxx:*****` 中的 `xxxxxx.xxx.xxxx`）。
+
+![填写IP地址](https://docs-assets.bucket.uciu.cn/images/terraria-images/19.png)
+
+5. 填写完成后点击 **接受**。
+
+![点击接受](https://docs-assets.bucket.uciu.cn/images/terraria-images/20.png)
+
+6. 填写端口：输入服务地址中**冒号后面的数字**（即服务地址 `xxxxxx.xxx.xxxx:*****` 中冒号后的数字）。
+
+![填写端口](https://docs-assets.bucket.uciu.cn/images/terraria-images/21.png)
+
+7. 填写完成后点击 **接受**。
+
+![点击接受](https://docs-assets.bucket.uciu.cn/images/terraria-images/22.png)
+
+8. 输入服主设置的密码（如未设置密码则无需填写），即可进入游戏。
+
+## 手机端好友加入
+
+1. 打开手机版 Terraria，点击 **多人模式**。
+
+![打开多人模式](https://docs-assets.bucket.uciu.cn/images/terraria-images/25.jpeg)
+
+2. 选择您要使用的人物。
+
+![选择人物](https://docs-assets.bucket.uciu.cn/images/terraria-images/26.jpeg)
+
+3. 点击右下角的 **连接**。
+
+![点击连接](https://docs-assets.bucket.uciu.cn/images/terraria-images/27.jpeg)
+
+4. 填写连接信息：
+
+    - IP 地址：填写服务地址中冒号前面的部分。
+    - 端口：填写服务地址中冒号后面的数字。
+    - 密码：如服务器设置了密码则一并填写，没有密码则留空。
+
+    填写完成后点击 **加入** 即可进入游戏。
+
+![填写连接信息](https://docs-assets.bucket.uciu.cn/images/terraria-images/28.jpg)
+
+## 服务器联机
+
+1. 打开 Steam，点击左上角 **库**。
+
+![打开库](https://docs-assets.bucket.uciu.cn/images/terraria-images/29.png)
+
+2. 在左侧找到 **Terraria**，点击 **齿轮** 图标。
+
+![点击齿轮图标](https://docs-assets.bucket.uciu.cn/images/terraria-images/30.png)
+
+3. 点击 **管理**。
+
+![点击管理](https://docs-assets.bucket.uciu.cn/images/terraria-images/31.png)
+
+4. 点击 **浏览本地文件**。
+
+![浏览本地文件](https://docs-assets.bucket.uciu.cn/images/terraria-images/32.png)
+
+5. 双击运行 **TerrariaServer.exe**。
+
+![运行服务器程序](https://docs-assets.bucket.uciu.cn/images/terraria-images/33.png)
+
+6. 输入要联机世界对应的数字并按回车（示例中选择 `3`）。
+
+::::note
+如需使用新世界，推荐在游戏中创建，并将世界文件放置到 `C:\Users\<用户名>\Documents\My Games\Terraria\Worlds` 文件夹下。
+::::
+
+![选择世界](https://docs-assets.bucket.uciu.cn/images/terraria-images/34.png)
+
+7. 输入联机人数并按回车（包含您自己，默认 16，最多 256）。
+
+![设置联机人数](https://docs-assets.bucket.uciu.cn/images/terraria-images/35.png)
+
+8. 询问是否自动转发端口时，输入 `y`（推荐）并按回车。
+
+![自动转发端口](https://docs-assets.bucket.uciu.cn/images/terraria-images/36.png)
+
+9. 输入您想要设置的密码并按回车（如不设置密码，直接按回车即可）。
+
+![设置密码](https://docs-assets.bucket.uciu.cn/images/terraria-images/37.png)
+
+10. 出现如图所示的成功提示，即表示服务器已成功创建，可以被内网穿透监听。
+
+::::warning
+游玩期间请勿关闭服务器窗口；游玩结束后，输入 `exit` 并按回车以关闭服务器。
+::::
+
+![服务器启动成功](https://docs-assets.bucket.uciu.cn/images/terraria-images/38.png)
+
+## 遇到问题如何求助
+
+如果遇到问题，请添加 [控制台-帮助中心](https://console.nrtun.com/help) 内的用户交流群，发送隧道的脱敏日志友善寻求帮助。请注意，群内成员没有为您解决问题的义务，所以您需要注意您提问的方式。但在大部分情况下，群友都是很乐于助人的。
+
+---
+
+*本文档由社区用户"疯子"贡献。如有疑问，欢迎通过 QQ：3549049181 或邮箱：yryuggh@163.com 联系原作者。*

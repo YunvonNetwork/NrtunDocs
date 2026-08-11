@@ -1,4 +1,5 @@
 ---
+title: "OAuth 与开放 API"
 sidebar_position: 1
 ---
 
@@ -6,9 +7,9 @@ sidebar_position: 1
 
 本文档介绍第三方应用如何通过 OAuth 获取授权，并使用 `/open` 开放 API 访问用户侧资源。
 
-:::info
+::::info
 该文档部分内容使用生成式人工智能编写。
-:::
+::::
 
 ## 基础信息
 
@@ -35,9 +36,9 @@ OAuth 授权页和 Device Code 确认页是用户交互页面，使用 `console.
 | `urn:ietf:params:oauth:grant-type:device_code` | 无浏览器或输入受限设备                    | 按需使用                                             |
 | `client_credentials`                           | 机器到机器调用                            | 仅限 client 类 scope，不可访问用户侧 `/open/tunnels` |
 
-:::warning
+::::warning
 `client_credentials` 不会继承 OAuth 应用所有者的用户权限，也不能用于 `tunnel:read` / `tunnel:write` 这类用户侧 scope。访问用户自己的隧道必须使用用户参与授权的流程，例如 `authorization_code` 或 device code。
-:::
+::::
 
 ### 应该选择哪种授权方式
 
@@ -78,9 +79,9 @@ curl -X POST https://api.console.nrtun.com/oauth2/token \
   -d 'refresh_token=nrtun_rt_xxx'
 ```
 
-:::tip
+::::tip
 服务端应用建议优先使用 `client_secret_basic`。public client 使用 PKCE 时不提交 `client_secret`。
-:::
+::::
 
 ## Scope 列表
 
@@ -124,9 +125,9 @@ GET https://console.nrtun.com/oauth/authorize?client_id=YOUR_CLIENT_ID&redirect_
 | `code_challenge`        | public client 必填 | PKCE challenge                           |
 | `code_challenge_method` | public client 必填 | 当前只支持 `S256`                        |
 
-:::tip
+::::tip
 如果未传 `scope`，默认会包含 `profile`。
-:::
+::::
 
 ### 2. 用户确认授权
 
@@ -229,9 +230,9 @@ curl -X POST https://api.console.nrtun.com/oauth2/token \
 }
 ```
 
-:::note
+::::note
 刷新时旧的 `refresh_token` 会被吊销，客户端应保存新返回的 `refresh_token`。
-:::
+::::
 
 ## Device Code 流程
 
@@ -311,9 +312,9 @@ curl -X POST https://api.console.nrtun.com/oauth2/token \
 }
 ```
 
-:::warning
+::::warning
 Device Code 获取到的是用户授权 token，因此可以访问用户侧 `/open` API。设备应安全保存 `refresh_token`，不要将其打印到日志或上传到第三方服务。
-:::
+::::
 
 CLI/TUI 在完成 OAuth Device Code 登录后，可以使用 `access_token` 调用 `GET /open/tunnels` 或 `GET /open/tunnels/:tunnelId` 获取 TCP/UDP/HTTP 隧道启动配置。若接口返回 401，应使用 `refresh_token` 调用 `/oauth2/token` 刷新 `access_token`，保存响应中的新 `refresh_token`，然后重试一次原请求。
 
@@ -365,9 +366,9 @@ curl -X POST https://api.console.nrtun.com/oauth2/token \
 }
 ```
 
-:::warning
+::::warning
 如果请求 `profile`、`tunnel:read`、`tunnel:write` 等用户侧 scope，会被拒绝。`client_credentials` 不会继承应用所有者的用户权限。
-:::
+::::
 
 ## 吊销 token
 
@@ -394,9 +395,9 @@ curl -X POST https://api.console.nrtun.com/oauth2/revoke \
 }
 ```
 
-:::note
+::::note
 当前吊销接口不要求客户端认证。请不要把 token 暴露给不可信环境，否则任何拿到 token 的人都可能吊销它。
-:::
+::::
 
 ## 获取用户信息
 
@@ -427,9 +428,9 @@ curl https://api.console.nrtun.com/oauth2/userinfo \
 Authorization: Bearer YOUR_ACCESS_TOKEN
 ```
 
-:::warning
+::::warning
 不要使用控制台登录后的主站 JWT 调用 `/open`。`/open` 只接受 OAuth access token。
-:::
+::::
 
 ### GET /open/me
 
@@ -601,9 +602,9 @@ curl https://api.console.nrtun.com/open/tunnels/TUNNEL_ID \
 | `createAt` | number | 创建时间戳 |
 | `lastActivity` | number | 最近活动时间戳 |
 
-:::warning
+::::warning
 `userSecret` 当前由后端返回是为了兼容历史客户端字段，但 OAuth-only 客户端不应依赖该字段作为长期方案。后续如果后端移除该字段，客户端应不受影响。
-:::
+::::
 
 #### OpenAPI schema
 
@@ -986,9 +987,9 @@ await writeFile(
 );
 ```
 
-:::warning
+::::warning
 该接口会返回未加密的私钥内容。不要记录完整响应、Base64 字段或解码后的私钥，不要将其暴露给浏览器页面、日志、错误上报或不可信的第三方服务。服务端会为详情响应设置 `Cache-Control: no-store` 和 `Pragma: no-cache`。
-:::
+::::
 
 如果证书不存在或不属于当前授权用户，接口统一返回 404。尚未签发完成的证书可能返回空的 `certificateBase64` 和 `privateKeyBase64`，调用方应先检查 `status` 和内容字段。
 
@@ -1046,9 +1047,9 @@ curl -X PATCH https://api.console.nrtun.com/open/tunnels/TUNNEL_ID \
 - 证书绑定
 - 封禁状态
 
-:::note
+::::note
 Proxy Protocol 只适用于 `tcp` / `udp` 隧道。HTTP/HTTPS 隧道不能启用 Proxy Protocol；UDP 隧道仅支持 `v2`。
-:::
+::::
 
 ## 常见错误
 

@@ -2,11 +2,11 @@
 title: "Docker"
 ---
 
-# NatureTunnel Docker 客户端启动文档
+# NatureTunnel Docker 客户端操作文档
 
 ## 介绍
 
-- 本文档将一步步向您介绍如何在Docker环境下部署NatureTunnel内网穿透服务命令行客户端并配置守护进程。
+- 本文档将逐步向您介绍如何在 Docker 环境下部署 NatureTunnel 内网穿透服务命令行客户端，并配置守护进程。
 
 ## 操作步骤
 
@@ -18,9 +18,9 @@ title: "Docker"
 docker pull unifyz/nrtun-client
 ```
 
-:::warning
+::::warning
 如果您身处大陆网络环境，Docker Hub 访问可能较慢，建议配置镜像加速器后执行上述拉取命令。
-:::
+::::
 
 - 在控制台 [隧道列表（隧道管理）](https://console.nrtun.com/tunnel/list) 页面，选择您创建的隧道，鼠标点击右侧操作下拉框，点击生成客户端配置，将配置内容复制到剪贴板，并在您的工作目录下创建config.toml，将配置写入此文件。
 
@@ -100,3 +100,7 @@ docker rm nrtun
 ```
 
 删除后，如需重新运行请参照"启动客户端"章节。
+
+## 遇到问题如何求助
+
+如果遇到问题，请添加 [控制台-帮助中心](https://console.nrtun.com/help) 内的用户交流群，发送隧道的脱敏日志友善寻求帮助。请注意，群内成员没有为您解决问题的义务，所以您需要注意您提问的方式。但在大部分情况下，群友都是很乐于助人的。
